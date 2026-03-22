@@ -1,0 +1,33 @@
+# ClinLang — Comprehensive Example
+# Supports: core commands, symptoms with intensity+duration, extensions
+
+# Patient demographics
+pt 34M wt65 ht170
+
+# Chief complaint
+cc fever and productive cough 5 days
+
+# History of presenting illness
+hpi started with fever, then cough with yellow sputum, worsening SOB at rest
+
+# Past medical history
+pmh dm2 htn asthma
+
+# Symptoms (intensity: + mild, ++ severe, +++ very severe | - improving, -- resolving)
+# Duration appended after intensity: fever++3d means severe fever for 3 days
+
+sx fever++3d cough++5d sob+ sweating+ chills-
+
+# Vitals
+vitals bp130/85 hr102 spo294 temp100.4 rr22
+
+# --- EXTENSION COMMANDS (no core changes needed) ---
+
+# Lab results
+lab hb11.2 wbc14500 plt220000 crp48 esr65
+
+# Chest X-Ray findings (exam)
+exam crepitations+ consolidation+ bronchialbreathing+
+
+# Diagnosis
+dx community acquired pneumonia

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClinLang — Offline Clinical Shorthand</title>
+    
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>ClinLang</h1>
+            </div>
+            <div class="status-badge" id="app-status">
+                <span class="dot loading"></span> Loading Engine...
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            
+            <!-- Left Side: Input Editor -->
+            <section class="editor-pane">
+                <div class="pane-header">
+                    <h2>Input Shorthand</h2>
+                    <span class="shortcut-tip">Auto-saves locally</span>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea id="cln-input" placeholder="Type clinical shorthand here...&#10;&#10;Try:&#10;pt 45M wt80&#10;cc severe chest pain 2h&#10;pmh dm2 htn&#10;vitals bp160/100 hr105 spo292&#10;rx aspirin 300mg stat po" spellcheck="false"></textarea>
+                    <ul id="autocomplete-list" class="autocomplete-dropdown hidden"></ul>
+                </div>
+            </section>
+
+            <!-- Right Side: Live Output -->
+            <section class="output-pane">
+                <div class="pane-header output-header">
+                    <h2>Generated SOAP Note</h2>
+                    <div class="actions">
+                        <button id="btn-copy" class="btn primary">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            Copy Note
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Abnormal Flags Banner -->
+                <div id="alerts-container" class="alerts-container hidden"></div>
+
+                <div class="output-wrapper">
+                    <pre id="soap-output" class="rendered-note">Output will appear here instantly...</pre>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- The standard Go WASM Executer -->
+    <script src="wasm_exec.js"></script>
+    <script src="app.js?v=3"></script>
+
+</body>
+</html>

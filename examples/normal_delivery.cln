@@ -1,0 +1,24 @@
+@profile obgyn
+pt 28F wt65kg
+id PT-99210-OB
+gpal G2P1A0L1
+lmp 2025-06-15
+edd 2026-03-22
+
+cc Admitted in active labor at term
+hpi Patient experienced spontaneous rupture of membranes 2 hours prior to admission, followed by regular contractions. Fluid was clear.
+pmh Uncomplicated previous spontaneous vaginal delivery in 2023. No history of gestational diabetes or hypertension.
+
+vitals bp120/75 hr88 spo299 temp37.1 rr18
+fhs 145 regular, reassuring reactive trace on CTG
+ctx 4 in 10 mins, lasting 45 seconds, strong intensity
+
+sx pain+++4h
+
+dx Normal Vaginal Delivery at Term
+rx oxytocin 10units IM stat
+rx paracetamol 1g PO stat
+rx ibuprofen 400mg PO TDS 3d
+
+# Unrecognized commands are automatically stored as organized Extra data!
+delivery_details baby_cried_immediately apgar_9_10 weight_3.2kg

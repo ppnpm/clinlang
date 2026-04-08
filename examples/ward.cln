@@ -1,0 +1,25 @@
+pt 65M wt75 ht175
+day Day 3 post-op Laparotomy
+alg Penicillin rash, Sulfa anaphylaxis
+sh smoker 40py, etoh-
+fh cad in mother at 50
+
+cc fever and increasing abdominal pain
+hpi Pain started 12 hours ago, sharp, localized to right iliac fossa. Associated with 2 episodes of non-bilious emesis.
+pmh dm2 htn cad
+
+sx abd_pain+++12h fever++ emesis++ nausea+
+pe cvs:rr s1s2 rs:nvb abd:tender_rif guarding+ bowel_sounds_sluggish
+
+vitals bp100/60 hr110 spo295 temp101.4 rr22
+
+# Using the new intelligent umbrella parser!
+ix hb9.2 wbc18000 plt250000 cr1.5 na132 k3.8
+ix cxr:wnl ecg:stemi
+ix hiv- hbv+ dengue- widal:1/60
+
+rx paracetamol 1g qds iv
+rx piptaz 4.5g tds iv
+
+dx Post-operative intra-abdominal sepsis
+ddx Anastomotic leak / Abscess

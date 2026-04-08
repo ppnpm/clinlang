@@ -8,6 +8,7 @@ Built purely in Go, it runs anywhere: from the terminal, as an HTTP API, and sea
 * **Zero Punctuation Shorthand:** Type as fast as you think (`pt 34M cc fever 3d vitals hr110`).
 * **Abbreviation Expansion:** Automatically expands short-hand like `dm2` to "Type 2 Diabetes Mellitus" and prescription frequencies like `bd` to "Twice daily" on output.
 * **Clinical Decision Support:** Flags abnormal vitals and lab values natively.
+* **Ward Ready:** Supports `day`, `sh` (Social History), `fh` (Family), `alg` (Allergies), `pe` (Physical Exam) and deeply parses `lab hb9.8 wbc12000`.
 * **Extensible System:** Any unrecognized command becomes a structured key-value pair (`obs ga34w`).
 * **Output Agnostic:** Export to JSON, raw Clinical Note, or SOAP-format.
 
@@ -44,10 +45,11 @@ import (
 )
 
 func main() {
-	rawText := "pt 40M wt90\ncc chest pain"
+	rawText := "pt 40M wt90\ncc chest pain\nlab hb9.2"
 	caseData := engine.ParseString(rawText)
 
 	fmt.Printf("Age: %d\n", caseData.Patient.Age)
+	fmt.Printf("Hb Warning: %v\n", caseData.AbnormalFlags)
 	fmt.Println(engine.FormatSOAP(caseData))
 }
 ```

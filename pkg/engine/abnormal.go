@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Severity levels for abnormal flags.
@@ -25,13 +26,14 @@ type AbnormalFlag struct {
 // =============================================================================
 
 // CheckAbnormals inspects vitals and known lab values in Extra and
-// appends AbnormalFlag entries to the Case.
-func CheckAbnormals(c *Case) {
+// appends AbnormalFlag entries to the ClinicalCase.
+func CheckAbnormals(c *ClinicalCase) {
 	checkVitals(c)
 	checkLabs(c)
+	checkSerology(c)
 }
 
-func checkVitals(c *Case) {
+func checkVitals(c *ClinicalCase) {
 	v := c.Vitals
 
 	// Blood pressure: parse systolic from "140/90"
@@ -89,18 +91,24 @@ func checkVitals(c *Case) {
 	}
 }
 
-func checkLabs(c *Case) {
-	labs, ok := c.Extra["lab"]
-	if !ok {
+func checkLabs(c *ClinicalCase) {
+	labs := c.Labs
+	if len(labs) == 0 {
 		return
 	}
+	
+	p := c.Patient
 
 	checkLabFloat(c, labs, "hb", func(v float64) *AbnormalFlag {
+		lowerBound := 11.0
+		if p.Sex == "M" {
+			lowerBound = 13.0
+		}
 		switch {
 		case v < 7:
 			return &AbnormalFlag{"Hb", fmt.Sprintf("%.1f g/dL", v), "Severe anaemia (Hb < 7)", SeverityCritical}
-		case v < 11:
-			return &AbnormalFlag{"Hb", fmt.Sprintf("%.1f g/dL", v), "Anaemia (Hb < 11)", SeverityWarning}
+		case v < lowerBound:
+			return &AbnormalFlag{"Hb", fmt.Sprintf("%.1f g/dL", v), fmt.Sprintf("Anaemia (Hb < %.1f)", lowerBound), SeverityWarning}
 		case v > 17:
 			return &AbnormalFlag{"Hb", fmt.Sprintf("%.1f g/dL", v), "Polycythaemia (Hb > 17)", SeverityWarning}
 		}
@@ -168,8 +176,29 @@ func checkLabs(c *Case) {
 	})
 }
 
+// checkSerology scans all c.Labs for common positive/negative test outcomes
+func checkSerology(c *ClinicalCase) {
+	viralPanel := map[string]bool{"hiv": true, "hbv": true, "hcv": true, "dengue": true, "trop": true, "crp": true}
+	for k, v := range c.Labs {
+		lowerK := strings.ToLower(k)
+		if viralPanel[lowerK] {
+			if strings.Contains(v, "+") { // picks up +, ++, +++
+				sev := SeverityWarning
+				if lowerK == "trop" || lowerK == "hiv" {
+					sev = SeverityCritical
+				}
+				c.AbnormalFlags = append(c.AbnormalFlags, AbnormalFlag{
+					Field: strings.ToUpper(k), Value: v, 
+					Message: fmt.Sprintf("Positive %s marker", strings.ToUpper(k)), 
+					Severity: sev,
+				})
+			}
+		}
+	}
+}
+
 // checkLabFloat parses a lab value as float64 and calls the checker fn.
-func checkLabFloat(c *Case, labs map[string]string, key string, fn func(float64) *AbnormalFlag) {
+func checkLabFloat(c *ClinicalCase, labs map[string]string, key string, fn func(float64) *AbnormalFlag) {
 	val, ok := labs[key]
 	if !ok {
 		return

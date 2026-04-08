@@ -9,7 +9,7 @@ import (
 
 func main() {
 	port := ":3000"
-	
+
 	// CRITICAL FIX: Add special mime type for Wasm globally.
 	// Windows often doesn't know what a .wasm file is, causing the browser
 	// to reject it for security reasons if we don't explicitly declare it universally.

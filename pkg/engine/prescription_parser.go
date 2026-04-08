@@ -67,7 +67,7 @@ var routeAliases = map[string]string{
 //	rx amoxicillin 500mg tds po x7d
 //	rx lasix 40mg od iv
 //	rx paracetamol 1g qds prn
-func ParsePrescription(tokens []string, c *Case) {
+func ParsePrescription(tokens []string, c *ClinicalCase) {
 	if len(tokens) == 0 {
 		c.AddWarning("rx: missing drug name")
 		return

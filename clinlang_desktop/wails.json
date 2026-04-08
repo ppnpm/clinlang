@@ -1,0 +1,22 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "clinlang_desktop",
+  "outputfilename": "clinlang_desktop",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "ppnpm",
+    "email": "ppnpm@users.noreply.github.com"
+  },
+  "bindings": {
+    "ts_generation": {
+      "prefix": "",
+      "suffix": "",
+      "typescript_alias": {
+        "engine.Case": "ClinicalCase"
+      }
+    }
+  }
+}

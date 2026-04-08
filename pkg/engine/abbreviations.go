@@ -7,6 +7,7 @@ import "strings"
 // always stores the original abbreviated form (fast to type and store).
 //
 // Keys must be lowercase (input is normalized before lookup).
+
 var Abbreviations = map[string]string{
 	// Chronic diseases
 	"dm1":   "Type 1 Diabetes Mellitus",

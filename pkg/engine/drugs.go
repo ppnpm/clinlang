@@ -11,6 +11,7 @@ var drugsJSON []byte
 
 var DrugsList []string
 
+
 func init() {
 	err := json.Unmarshal(drugsJSON, &DrugsList)
 	if err != nil {

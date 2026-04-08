@@ -1,13 +1,12 @@
 package main
 
 import (
+	"clinlang/pkg/engine"
+	_ "clinlang/pkg/engine/plugins/obgyn"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
-
-	"clinlang/pkg/engine"
-	_ "clinlang/pkg/engine/plugins/obgyn"
 )
 
 // =============================================================================
@@ -15,17 +14,21 @@ import (
 // =============================================================================
 
 // PrintClinicalNote prints a human-readable structured clinical note.
-func PrintClinicalNote(c engine.Case) {
+func PrintClinicalNote(c engine.ClinicalCase) {
 	sep := strings.Repeat("─", 50)
 	fmt.Println(sep)
-	fmt.Println("         CLINICAL NOTE")
+	fmt.Println("CLINICAL NOTE")
 	fmt.Println(sep)
 
 	fmt.Printf("ID     : %s\n", c.Patient.Id)
+
+	//Accessing Patient's Age
 	age := fmt.Sprintf("%d", c.Patient.Age)
 	if c.Patient.Age == 0 {
 		age = "?"
 	}
+
+
 	fmt.Printf("Patient: %s/%s", age, c.Patient.Sex)
 	if c.Patient.Weight > 0 {
 		fmt.Printf("  Wt: %gkg", c.Patient.Weight)
@@ -120,7 +123,7 @@ func printField(label, value string) {
 }
 
 // PrintJSON outputs the case as indented JSON.
-func PrintJSON(c engine.Case) {
+func PrintJSON(c engine.ClinicalCase) {
 	b, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		fmt.Println("Error encoding JSON:", err)
@@ -130,7 +133,7 @@ func PrintJSON(c engine.Case) {
 }
 
 // PrintValidation runs all checks and reports warnings + abnormal flags.
-func PrintValidation(c engine.Case) {
+func PrintValidation(c engine.ClinicalCase) {
 	fmt.Println("=== Validation Report ===")
 	if len(c.Warnings) == 0 && len(c.AbnormalFlags) == 0 {
 		fmt.Println("✔  No issues found.")
@@ -161,18 +164,23 @@ func main() {
 
 	subcommand := strings.ToLower(args[1])
 
-	// `clinlang server` takes an optional --port flag, no file needed
+	//## Server command
+
+	// `clinlang server` takes an optional --port flag, no file needed, 'server' subcommand requires only 2 arguments to run
 	if subcommand == "server" {
 		port := "8080"
 		for i, a := range args {
 			if a == "--port" && i+1 < len(args) {
-				port = args[i+1]
+				port = args[i+1] // checking --port from the arguments and updating default port 8080 to custom value from the arguments : ./clinlang.exe server --port 9090
 			}
 		}
 		StartServer(port)
 		return
 	}
 
+	//## File based commands to read .cln file
+
+	//ensures that filepath is provided for file based commands: ./clinlang.exe run <file.cln>
 	if len(args) < 3 {
 		printUsage()
 		return
@@ -184,6 +192,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
+
+	fmt.Printf("Content: %v\n", c)
 
 	switch subcommand {
 	case "run":
@@ -207,7 +217,7 @@ func printUsage() {
 Usage:
   clinlang run      <file.cln>         Formatted clinical note
   clinlang soap     <file.cln>         SOAP-format note
-  clinlang json     <file.cln>         Structured JSON output
+  clinlang json     <file.cln>         Structured JSON outputclin
   clinlang validate <file.cln>         Validation + abnormal flag report
   clinlang server   [--port 8080]      Start HTTP JSON API server`)
 }

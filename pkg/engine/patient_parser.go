@@ -10,7 +10,7 @@ import (
 //   - age:       34, 30min, 6mo, 2w
 //   - sex:       M / F
 //   - age+sex:   34M / 5dF / 30minM
-func ParsePatient(tokens []string, c *Case) {
+func ParsePatient(tokens []string, c *ClinicalCase) {
 	for _, rawTok := range tokens {
 		rawTok = strings.TrimSpace(rawTok)
 		if rawTok == "" {

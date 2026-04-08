@@ -107,28 +107,28 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 // =============================================================================
 
 // readAndParse decodes the request body and calls ParseString.
-func readAndParse(r *http.Request) (engine.Case, error) {
+func readAndParse(r *http.Request) (engine.ClinicalCase, error) {
 	if r.Method == http.MethodOptions {
-		return engine.Case{}, fmt.Errorf("preflight")
+		return engine.ClinicalCase{}, fmt.Errorf("preflight")
 	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return engine.Case{}, fmt.Errorf("could not read request body")
+		return engine.ClinicalCase{}, fmt.Errorf("could not read request body")
 	}
 	defer r.Body.Close()
 
 	var req apiRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		return engine.Case{}, fmt.Errorf("invalid JSON body — expected {\"input\": \"...\"}")
+		return engine.ClinicalCase{}, fmt.Errorf("invalid JSON body — expected {\"input\": \"...\"}")
 	}
 	if strings.TrimSpace(req.Input) == "" {
-		return engine.Case{}, fmt.Errorf("'input' field is empty")
+		return engine.ClinicalCase{}, fmt.Errorf("'input' field is empty")
 	}
 	return engine.ParseString(req.Input), nil
 }
 
 // buildNoteString captures PrintClinicalNote output as a string.
-func buildNoteString(c engine.Case) string {
+func buildNoteString(c engine.ClinicalCase) string {
 	sb := strings.Builder{}
 	sep := strings.Repeat("─", 50)
 

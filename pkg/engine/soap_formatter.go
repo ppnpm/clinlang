@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// FormatSOAP generates a SOAP-structured clinical note from a parsed Case.
+// FormatSOAP generates a SOAP-structured clinical note from a parsed ClinicalCase.
 //
 // SOAP = Subjective / Objective / Assessment / Plan
 //
@@ -15,12 +15,18 @@ import (
 //   - ER documentation
 //   - Clinic notes
 //   - Referral letters
-func FormatSOAP(c Case) string {
+func FormatSOAP(c ClinicalCase) string {
 	sb := strings.Builder{}
 
 	sep := strings.Repeat("─", 50)
 	sb.WriteString(sep + "\n")
 	sb.WriteString(fmt.Sprintf("Patient: %s  |  ID: %s\n", formatPatientLine(c.Patient), c.Patient.Id))
+	if c.Day != "" {
+		sb.WriteString(fmt.Sprintf("Context: %s\n", c.Day))
+	}
+	if c.Allergies != "" {
+		sb.WriteString(fmt.Sprintf("\n[!] ALLERGIES: %s [!]\n", strings.ToUpper(c.Allergies)))
+	}
 	sb.WriteString(sep + "\n\n")
 
 	// ── S: Subjective ─────────────────────────────────────
@@ -28,13 +34,19 @@ func FormatSOAP(c Case) string {
 	sb.WriteString(strings.Repeat("─", 25) + "\n")
 
 	if c.CC != "" {
-		sb.WriteString(fmt.Sprintf("Chief Complaint : %s\n", c.CC))
+		sb.WriteString(fmt.Sprintf("Chief Complaint: %s\n", c.CC))
 	}
 	if c.HPI != "" {
 		sb.WriteString(fmt.Sprintf("HPI            : %s\n", c.HPI))
 	}
 	if c.PMH != "" {
 		sb.WriteString(fmt.Sprintf("PMH            : %s\n", c.PMH))
+	}
+	if c.SH != "" {
+		sb.WriteString(fmt.Sprintf("Social History : %s\n", c.SH))
+	}
+	if c.FH != "" {
+		sb.WriteString(fmt.Sprintf("Family History : %s\n", c.FH))
 	}
 
 	// Symptoms listed under subjective
@@ -64,6 +76,36 @@ func FormatSOAP(c Case) string {
 	sb.WriteString(strings.Repeat("─", 25) + "\n")
 
 	sb.WriteString(fmt.Sprintf("Vitals         : %s\n", FormatVitals(c.Vitals)))
+
+	if c.PE != "" {
+		sb.WriteString(fmt.Sprintf("Physical Exam  : %s\n", c.PE))
+	}
+
+	if len(c.Imaging) > 0 {
+		sb.WriteString("Imaging/Rad    : ")
+		pairs := []string{}
+		for k, v := range c.Imaging {
+			if v == "true" {
+				pairs = append(pairs, strings.ToUpper(k))
+			} else {
+				pairs = append(pairs, strings.ToUpper(k)+" "+v)
+			}
+		}
+		sb.WriteString(strings.Join(pairs, " | ") + "\n")
+	}
+
+	if len(c.Labs) > 0 {
+		sb.WriteString("Labs           : ")
+		pairs := []string{}
+		for k, v := range c.Labs {
+			if v == "true" {
+				pairs = append(pairs, strings.ToUpper(k))
+			} else {
+				pairs = append(pairs, strings.ToUpper(k)+" "+v)
+			}
+		}
+		sb.WriteString(strings.Join(pairs, " | ") + "\n")
+	}
 
 	// Specialty data (Plugin output) inline under objective
 	if c.SpecialtyData != nil {

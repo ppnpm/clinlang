@@ -16,7 +16,7 @@ import "strings"
 //
 //	cmd = "lab", tokens = ["hb13", "wbc12000", "plt150000"]
 //	Result: Extra["lab"]["hb"]="13", Extra["lab"]["wbc"]="12000"
-func ParseExtension(cmd string, tokens []string, c *Case) {
+func ParseExtension(cmd string, tokens []string, c *ClinicalCase) {
 	for _, tok := range tokens {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {

@@ -12,7 +12,7 @@ import (
 //   - spo298      → SpO2 (percentage)
 //   - temp99      → Temperature (Fahrenheit, numeric suffix)
 //   - rr18        → Respiratory rate (breaths/min)
-func ParseVitals(tokens []string, c *Case) {
+func ParseVitals(tokens []string, c *ClinicalCase) {
 	for _, tok := range tokens {
 		tok = strings.TrimSpace(strings.ToLower(tok))
 		if tok == "" {

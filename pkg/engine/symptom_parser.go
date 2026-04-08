@@ -20,7 +20,7 @@ var intensityMap = map[string]string{
 //   - sob+++       → very severe
 //   - pain--3d     → resolving, 3d duration
 //   - fever++2h    → severe, 2h duration
-func ParseSymptoms(tokens []string, c *Case) {
+func ParseSymptoms(tokens []string, c *ClinicalCase) {
 	for _, tok := range tokens {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {

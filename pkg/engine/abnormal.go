@@ -94,6 +94,7 @@ func checkVitals(c *ClinicalCase) {
 
 	// Respiratory rate
 	if v.RR > 0 {
+		
 		switch {
 		case v.RR > 30:
 			c.AbnormalFlags = append(c.AbnormalFlags, AbnormalFlag{"RR", fmt.Sprintf("%d /min", v.RR), "Severe tachypnoea (>30/min)", SeverityCritical})

@@ -1,5 +1,5 @@
-pt 58M wt82 ht172
-cc chest pain and breathlessness since 4 hours
+pt 58M wt82 ht172 bed12
+cc chest pain and breathlessness since 4h
 hpi sudden onset central chest pain radiating to left arm and jaw, associated diaphoresis and nausea
 pmh dm2 htn hyperlipidaemia
 
@@ -8,11 +8,11 @@ sx chestpain+++4h sob++ diaphoresis+ nausea+
 vitals bp160/100 hr98 spo292 temp98.6 rr22
 
 lab hb13.2 wbc11000 trop0.8 ckmb48 creatinine1.1 na138 k4.1
-ecg stemi+ inferiorlead II_III_avF
+ecg v1:st+
 
 rx aspirin 300mg stat po
 rx clopidogrel 300mg stat po
 rx heparin 5000u stat iv
 rx metoprolol 25mg bd
 
-dx Inferior STEMI — for primary PCI
+dx Inferior STEMI —for primary PCI

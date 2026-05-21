@@ -193,8 +193,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Content: %v\n", c)
-
 	switch subcommand {
 	case "run":
 		PrintClinicalNote(c)

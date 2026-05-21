@@ -1,0 +1,21 @@
+@profile obgyn+radio
+pt 31F wt68 ht162 ga:34w
+id PT-MULTI-002
+gpal G3P1A1L1
+lmp 2025-06-15
+edd 2026-03-22
+
+cc Reduced fetal movements with back pain
+hpi Decreased fetal movement perception since morning with dull low back ache
+
+vitals bp124/78 hr92 spo299 temp98.8 rr18 fhr:138
+sx reduced_fetal_movement++8h back_pain+1d
+ix usg:single_live_iup cephalic placenta_anterior afi_adequate
+
+dx High-risk ANC follow-up
+rx iron_folic_acid 1tab po od 30d
+
+# Notes:
+# - Uses @profile style plus stacked plugins.
+# - obgyn should still work.
+# - radio currently does not exist, so warning is expected.

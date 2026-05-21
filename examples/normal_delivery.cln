@@ -1,5 +1,5 @@
 @profile obgyn
-pt 28F wt65kg
+pt 28F wt65kg ga:32w
 id PT-99210-OB
 gpal G2P1A0L1
 lmp 2025-06-15
@@ -9,7 +9,7 @@ cc Admitted in active labor at term
 hpi Patient experienced spontaneous rupture of membranes 2 hours prior to admission, followed by regular contractions. Fluid was clear.
 pmh Uncomplicated previous spontaneous vaginal delivery in 2023. No history of gestational diabetes or hypertension.
 
-vitals bp120/75 hr88 spo299 temp37.1 rr18
+vitals bp120/75 hr88 spo299 temp37.1 rr18 fhr:140
 fhs 145 regular, reassuring reactive trace on CTG
 ctx 4 in 10 mins, lasting 45 seconds, strong intensity
 

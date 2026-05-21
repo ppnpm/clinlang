@@ -20,7 +20,10 @@ var intensityMap = map[string]string{
 //   - sob+++       → very severe
 //   - pain--3d     → resolving, 3d duration
 //   - fever++2h    → severe, 2h duration
-func ParseSymptoms(tokens []string, c *ClinicalCase) {
+//
+// reg is the per-parse CommandTokenRegistry. Pass nil when no plugin is active.
+// Tokens that produce no name (rare) are offered to plugin extensions before warning.
+func ParseSymptoms(tokens []string, c *ClinicalCase, reg *CommandTokenRegistry) {
 	for _, tok := range tokens {
 		tok = strings.TrimSpace(tok)
 		if tok == "" {
@@ -29,6 +32,10 @@ func ParseSymptoms(tokens []string, c *ClinicalCase) {
 
 		sym := parseSymptomToken(tok)
 		if sym.Name == "" {
+			// ── Plugin token extension ────────────────────────────────────────
+			if reg.Try("sx", tok, c) {
+				continue
+			}
 			c.AddWarning("Unrecognized symptom token: " + tok)
 			continue
 		}

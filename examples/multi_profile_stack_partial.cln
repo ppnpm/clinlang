@@ -1,0 +1,21 @@
+@obgyn+pedia
+pt 26F wt62 ht160 ga:30w
+id PT-MULTI-001
+gpal G2P1A0L1
+lmp 2025-07-10
+edd 2026-04-16
+
+cc Fever with lower abdominal pain in pregnancy
+hpi Fever for 2 days with intermittent lower abdominal discomfort, no bleeding
+pmh hypothyroidism on levothyroxine
+
+sx fever++2d pain+2d
+vitals bp110/70 hr98 spo298 temp100.2 rr20 fhr:146
+ix wbc13800 hb10.8 cr0.9 na134 k3.9
+
+dx Antenatal febrile illness at 30 weeks
+rx paracetamol 650mg po q6h 2d
+
+# Notes:
+# - obgyn should load and parse ga:/fhr:/gpal/lmp/edd.
+# - pedia currently does not exist, so parser should warn but continue.

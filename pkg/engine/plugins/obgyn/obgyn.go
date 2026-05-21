@@ -1,39 +1,80 @@
+// Package obgyn provides the OB/GYN specialty plugin for ClinScript.
+//
+// It demonstrates the full plugin contract:
+//   - GetCommands()      → new standalone commands (lmp, edd, gpal, fhs, ctx)
+//   - GetCommandTokens() → inline token extensions for core commands
+//                          "pt"     → ga:<weeks>w   (gestational age)
+//                          "vitals" → fhr:<bpm>     (fetal heart rate)
+//
+// Usage in a .cln file:
+//
+//	@profile obgyn
+//	pt 28F wt65 ga:34w          ← ga handled inline by this plugin
+//	vitals bp120/75 fhr:142     ← fhr handled inline by this plugin
+//	lmp 2025-06-15              ← standalone command
+//	edd 2026-03-22              ← standalone command
+//	gpal G2P1A0L1               ← standalone command
+//	fhs 142 regular, reactive   ← standalone command
+//	ctx 3 in 10min lasting 45s  ← standalone command
 package obgyn
 
 import (
 	"clinlang/pkg/engine"
+	"strconv"
 	"strings"
 )
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Plugin struct
+// ─────────────────────────────────────────────────────────────────────────────
+
 type ObGynPlugin struct{}
 
-func (p *ObGynPlugin) GetName() string { return "obgyn" }
-
-func (p *ObGynPlugin) GetDescription() string {
-	return "OB/GYN Specialty — obstetric and gynaecologic fields"
-}
+func (p *ObGynPlugin) GetName() string        { return "obgyn" }
+func (p *ObGynPlugin) GetDescription() string { return "OB/GYN Specialty — obstetric and gynaecologic fields" }
 
 func (p *ObGynPlugin) GetCommandSummary() map[string]string {
 	return map[string]string{
-		"lmp":  "Last menstrual period date",
-		"edd":  "Estimated date of delivery",
-		"gpal": "Gravida, Para, Abortus, Living",
-		"fhs":  "Fetal heart sounds",
-		"ctx":  "Contractions",
+		// Standalone commands
+		"lmp":  "Last menstrual period date (e.g. lmp 2025-06-15)",
+		"edd":  "Estimated date of delivery (e.g. edd 2026-03-22)",
+		"gpal": "Gravida/Para/Abortus/Living (e.g. gpal G2P1A0L1)",
+		"fhs":  "Fetal heart sounds (e.g. fhs 142 regular reactive)",
+		"ctx":  "Contractions (e.g. ctx 3in10min lasting45s)",
+		// Inline pt tokens
+		"[pt] ga:": "Gestational age inside pt command (e.g. pt 28F ga:34w)",
+		// Inline vitals tokens
+		"[vitals] fhr:": "Fetal heart rate inside vitals command (e.g. vitals bp120/75 fhr:142)",
 	}
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Plugin data struct — all OB/GYN-specific fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ObGynData holds all obstetric/gynaecologic structured data for the case.
+// It lives in ClinicalCase.SpecialtyData and is never mixed into Patient.
 type ObGynData struct {
-	LMP  string `json:"lmp,omitempty"`
-	EDD  string `json:"edd,omitempty"`
-	GPAL string `json:"gpal,omitempty"`
-	FHS  string `json:"fhs,omitempty"`
-	CTX  string `json:"ctx,omitempty"`
+	// Set via inline pt token extension: pt 28F ga:34w
+	GA     int    `json:"ga_weeks,omitempty"` // gestational age in weeks
+	GAUnit string `json:"ga_unit,omitempty"`  // always "w" for now
+
+	// Set via inline vitals token extension: vitals bp120/75 fhr:142
+	FHR int `json:"fhr_bpm,omitempty"` // fetal heart rate (bpm)
+
+	// Set via standalone commands
+	LMP  string `json:"lmp,omitempty"`  // last menstrual period
+	EDD  string `json:"edd,omitempty"`  // estimated date of delivery
+	GPAL string `json:"gpal,omitempty"` // gravida/para/abortus/living
+	FHS  string `json:"fhs,omitempty"`  // fetal heart sounds (full description)
+	CTX  string `json:"ctx,omitempty"`  // contractions (full description)
 }
 
-func (p *ObGynPlugin) InitData() any {
-	return &ObGynData{}
-}
+func (p *ObGynPlugin) InitData() any { return &ObGynData{} }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Standalone commands (new keywords added by this plugin)
+// ─────────────────────────────────────────────────────────────────────────────
 
 func (p *ObGynPlugin) GetCommands() map[string]engine.ParserFunc {
 	return map[string]engine.ParserFunc{
@@ -69,6 +110,73 @@ func (p *ObGynPlugin) GetCommands() map[string]engine.ParserFunc {
 		},
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline token extensions for core commands (CommandExtendable interface)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GetCommandTokens implements engine.CommandExtendable.
+//
+// This is where OB/GYN-specific inline tokens are registered for core commands.
+// The engine calls this when @profile obgyn is encountered and populates the
+// per-parse CommandTokenRegistry with these handlers.
+//
+// Plugin authors: never modify core parsers — add tokens here instead.
+func (p *ObGynPlugin) GetCommandTokens() map[string]map[string]engine.TokenExtFunc {
+	return map[string]map[string]engine.TokenExtFunc{
+
+		// ── Extensions for the `pt` command ──────────────────────────────────
+		"pt": {
+			// ga:<n>w — gestational age in weeks
+			// Accepted formats: ga:34w  ga:34  (weeks assumed)
+			// Writes into ObGynData.GA and ObGynData.GAUnit
+			"ga:": func(token string, c *engine.ClinicalCase) bool {
+				data, ok := c.SpecialtyData.(*ObGynData)
+				if !ok {
+					return false
+				}
+				raw := token[3:] // strip "ga:"
+				// Strip trailing 'w' or 'W' if present (e.g. "34w" → "34")
+				raw = strings.TrimRight(raw, "wW")
+				val, err := strconv.Atoi(strings.TrimSpace(raw))
+				if err != nil {
+					c.AddWarning("obgyn: invalid gestational age value: " + token)
+					return true // we claimed it, but it was malformed
+				}
+				data.GA = val
+				data.GAUnit = "w"
+				return true
+			},
+		},
+
+		// ── Extensions for the `vitals` command ──────────────────────────────
+		"vitals": {
+			// fhr:<bpm> — fetal heart rate
+			// Accepted formats: fhr:142  fhr:145bpm
+			// Writes into ObGynData.FHR
+			"fhr:": func(token string, c *engine.ClinicalCase) bool {
+				data, ok := c.SpecialtyData.(*ObGynData)
+				if !ok {
+					return false
+				}
+				raw := token[4:] // strip "fhr:"
+				// Strip optional "bpm" suffix
+				raw = strings.TrimRight(raw, "bpmBPM")
+				val, err := strconv.Atoi(strings.TrimSpace(raw))
+				if err != nil {
+					c.AddWarning("obgyn: invalid fetal heart rate value: " + token)
+					return true
+				}
+				data.FHR = val
+				return true
+			},
+		},
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Self-registration
+// ─────────────────────────────────────────────────────────────────────────────
 
 func init() {
 	engine.RegisterPlugin(&ObGynPlugin{})

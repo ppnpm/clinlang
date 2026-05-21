@@ -1,0 +1,30 @@
+@profile obgyn
+pt 29F wt64 ht159 ga:36w bed12 unit:LaborWard
+id PT-FULL-OB-001
+day Emergency admission
+alg nkda
+sh non-smoker etoh-
+fh htn_in_mother
+
+cc Severe labor pain with show
+hpi Regular contractions for 6 hours, show present, no leaking reported
+pmh previous lower_segment_cesarean_section
+
+sx pain+++6h anxiety+6h
+vitals bp132/84 hr102 spo298 temp99.0 rr22 fhr:142
+fhs 142 regular reactive
+ctx 4 in 10min lasting 50s
+
+ix hb10.1 wbc12400 plt210000 cr0.8
+ix usg:single_live_iup cephalic estimated_weight_2.9kg
+
+dx Trial of labor after cesarean in active phase
+ddx scar_tenderness fetal_distress
+rx iv_fluids 100ml/hr iv
+rx paracetamol 1g iv stat
+
+# Demonstrates:
+# - core commands
+# - plugin standalone commands
+# - plugin inline token extensions
+# - structured investigations and prescriptions

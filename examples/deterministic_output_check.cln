@@ -1,0 +1,25 @@
+pt 54M wt79 ht171
+id PT-DETERMINISTIC-001
+day OPD revisit
+alg penicillin_rash
+
+cc fatigue and pedal edema
+hpi progressive fatigue for 3w with mild breathlessness on exertion
+pmh htn dm2
+
+vitals hr104 temp99.1 rr20 bp146/92 spo294
+sx fatigue++3w edema+2w sob+2w
+
+# Unordered investigations on purpose:
+ix na131 k4.2 hb9.4 wbc12200 cr1.6
+ix ecg:sinus_tach cxr:cardiomegaly usg:grade1_nephropathy
+
+# Unordered extension keys on purpose:
+careplan zeta_done alpha_pending mid_review
+
+dx Symptomatic anemia with fluid overload
+rx furosemide 40mg iv stat
+rx pantoprazole 40mg iv od 3d
+
+# Notes:
+# - Run SOAP multiple times; Labs/Imaging/Extra blocks should stay stably sorted.

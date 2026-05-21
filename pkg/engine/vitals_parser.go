@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -10,9 +11,13 @@ import (
 //   - bp140/90    → Blood pressure (systolic/diastolic)
 //   - hr110       → Heart rate (bpm)
 //   - spo298      → SpO2 (percentage)
-//   - temp99      → Temperature (Fahrenheit, numeric suffix)
+//   - temp38.5    → Temperature (Celsius, decimal suffix)
 //   - rr18        → Respiratory rate (breaths/min)
-func ParseVitals(tokens []string, c *ClinicalCase) {
+//
+// reg is the per-parse CommandTokenRegistry. Pass nil when no plugin is active.
+// Unrecognized tokens are offered to plugin extensions via reg.Try("vitals", ...)
+// before a warning is emitted. Example: fhr:145 handled by @obgyn plugin.
+func ParseVitals(tokens []string, c *ClinicalCase, reg *CommandTokenRegistry) {
 	for _, tok := range tokens {
 		tok = strings.TrimSpace(strings.ToLower(tok))
 		if tok == "" {
@@ -49,7 +54,12 @@ func ParseVitals(tokens []string, c *ClinicalCase) {
 			}
 
 		case strings.HasPrefix(tok, "temp"):
-			c.Vitals.Temp = tok[4:]
+			val, err := strconv.ParseFloat(tok[4:], 64)
+			if err != nil {
+				c.AddWarning("Invalid temperature value: " + tok)
+			} else {
+				c.Vitals.Temp = val
+			}
 
 		case strings.HasPrefix(tok, "rr"):
 			val, err := strconv.Atoi(tok[2:])
@@ -60,6 +70,12 @@ func ParseVitals(tokens []string, c *ClinicalCase) {
 			}
 
 		default:
+			// ── Plugin token extension ────────────────────────────────────────
+			// Before warning, give the active plugin a chance to handle this token.
+			// Plugins register handlers via CommandExtendable.GetCommandTokens()["vitals"].
+			if reg.Try("vitals", tok, c) {
+				continue
+			}
 			c.AddWarning("Unrecognized vitals token: " + tok)
 		}
 	}
@@ -77,8 +93,8 @@ func FormatVitals(v Vitals) string {
 	if v.SpO2 != 0 {
 		parts = append(parts, "SpO2: "+strconv.Itoa(v.SpO2)+"%")
 	}
-	if v.Temp != "" {
-		parts = append(parts, "Temp: "+v.Temp)
+	if v.Temp != 0 {
+		parts = append(parts, fmt.Sprintf("Temp: %.1f°C", v.Temp))
 	}
 	if v.RR != 0 {
 		parts = append(parts, "RR: "+strconv.Itoa(v.RR)+" /min")

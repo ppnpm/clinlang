@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	// "fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"clinlang/pkg/engine"
 	_ "clinlang/pkg/engine/plugins/obgyn" // registers via init()
@@ -11,6 +14,12 @@ import (
 	"clinlang_desktop/backend/platform"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// DocEntry represents a documentation file.
+type DocEntry struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
 
 // App is the main Wails application struct.
 // It exposes methods to the frontend via Wails bindings.
@@ -123,6 +132,52 @@ func (a *App) IsFullscreen() bool {
 	return runtime.WindowIsFullscreen(a.ctx)
 }
 
+// AddImage opens a file dialog, copies the selected image to the workspace's images/ folder,
+// and returns the relative path for the frontend.
+func (a *App) AddImage() (string, error) {
+	opts := runtime.OpenDialogOptions{
+		Title: "Add Image",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Images (*.png;*.jpg;*.jpeg;*.gif;*.webp)", Pattern: "*.png;*.jpg;*.jpeg;*.gif;*.webp"},
+		},
+	}
+	
+	sourcePath, err := runtime.OpenFileDialog(a.ctx, opts)
+	if err != nil || sourcePath == "" {
+		return "", err
+	}
+
+	// Ensure images directory exists
+	imgDir := filepath.Join(a.fs.GetRootDir(), "images")
+	if err := os.MkdirAll(imgDir, 0755); err != nil {
+		return "", err
+	}
+
+	// Create unique destination filename
+	ext := filepath.Ext(sourcePath)
+	destName := time.Now().Format("20060102_150405") + ext
+	destPath := filepath.Join(imgDir, destName)
+
+	// Copy the file
+	src, err := os.Open(sourcePath)
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	dst, err := os.Create(destPath)
+	if err != nil {
+		return "", err
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return "", err
+	}
+
+	return "images/" + destName, nil
+}
+
 // SelectFolder opens a dialog to select a workspace directory and switches to it.
 func (a *App) SelectFolder() string {
 	opts := runtime.OpenDialogOptions{
@@ -181,5 +236,38 @@ func (a *App) SearchDrugs(prefix string) []string {
 // GetPlugins returns metadata about all registered specialty plugins.
 func (a *App) GetPlugins() []engine.PluginInfo {
 	return engine.ListPlugins()
+}
+
+// GetDocsList returns a list of files in the docs/ directory.
+func (a *App) GetDocsList() ([]DocEntry, error) {
+	// Original docs directory is in the root of the workspace
+	docsDir := "../docs"
+
+	files, err := os.ReadDir(docsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var docs []DocEntry
+	for _, f := range files {
+		if !f.IsDir() && filepath.Ext(f.Name()) == ".md" {
+			docs = append(docs, DocEntry{
+				Name: f.Name(),
+				Path: filepath.Join(docsDir, f.Name()),
+			})
+		}
+	}
+	return docs, nil
+}
+
+// GetDocContent reads a documentation file by name.
+func (a *App) GetDocContent(name string) (string, error) {
+	docsDir := "../docs"
+
+	content, err := os.ReadFile(filepath.Join(docsDir, name))
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
 

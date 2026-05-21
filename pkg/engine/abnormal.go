@@ -78,6 +78,20 @@ func checkVitals(c *ClinicalCase) {
 		}
 	}
 
+	//Temprature
+	if v.Temp > 0 {
+		switch {
+			case v.Temp > 40:
+				c.AbnormalFlags = append(c.AbnormalFlags, AbnormalFlag{"Temp", fmt.Sprintf("%.1f °C", v.Temp), "Severe hyperthermia (>40 °C)", SeverityCritical})
+			case v.Temp > 39:
+				c.AbnormalFlags = append(c.AbnormalFlags, AbnormalFlag{"Temp", fmt.Sprintf("%.1f °C", v.Temp), "Hyperthermia (>39 °C)", SeverityWarning})
+			case v.Temp < 35:
+				c.AbnormalFlags = append(c.AbnormalFlags, AbnormalFlag{"Temp", fmt.Sprintf("%.1f °C", v.Temp), "Severe hypothermia (<35 °C)", SeverityCritical})
+			case v.Temp < 36:
+				c.AbnormalFlags = append(c.AbnormalFlags, AbnormalFlag{"Temp", fmt.Sprintf("%.1f °C", v.Temp), "Hypothermia (<36 °C)", SeverityWarning})
+		}
+	}
+
 	// Respiratory rate
 	if v.RR > 0 {
 		switch {

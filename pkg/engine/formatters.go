@@ -70,7 +70,8 @@ func FormatMarkdown(c ClinicalCase) string {
 	
 	if len(c.Labs) > 0 {
 		sb.WriteString("- **Investigations**:\n")
-		for k, v := range c.Labs {
+		for _, k := range sortedMapKeys(c.Labs) {
+			v := c.Labs[k]
 			val := v
 			if val == "true" { val = "Ordered" }
 			sb.WriteString(fmt.Sprintf("  - %s: %s\n", strings.ToUpper(k), val))

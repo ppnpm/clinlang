@@ -7,11 +7,11 @@ import (
 
 // Vitals holds structured vital signs.
 type Vitals struct {
-	BP   string `json:"BP"`
-	HR   int    `json:"HR"`
-	SpO2 int    `json:"SpO2"`
-	Temp string `json:"Temp"`
-	RR   int    `json:"RR"`
+	BP   string  `json:"BP"`
+	HR   int     `json:"HR"`
+	SpO2 int     `json:"SpO2"`
+	Temp float64 `json:"Temp"`
+	RR   int     `json:"RR"`
 }
 
 // Symptom holds a single symptom with optional intensity and duration.
@@ -27,11 +27,19 @@ type Patient struct {
 	Id      string  `json:"id"`
 	Age     int     `json:"age"`
 	AgeUnit string  `json:"age_unit,omitempty"`
-	Sex     string  `json:"sex"`            //M/F/O
-	Weight  float64 `json:"weight_kg"`      //wt68
-	Height  float64 `json:"height_cm"`      //ht170
-	GPAL    string  `json:"gpal,omitempty"` //Gravida, Para, Abortus, Living
-	MOA     string  `json:"moa,omitempty"`  //months of amenorrhoea
+	Sex     string  `json:"sex"`       //M/F/O
+	Weight  float64 `json:"weight_kg"` //wt68
+	Height  float64 `json:"height_cm"` //ht170
+	Bed     int     `json:"bed"`       //bed number
+	Unit    string  `json:"unit"`      //Unit type
+	BMI     float64 `json:"bmi"`       //Body mass index auto-calculated
+	BSA     float64 `json:"bsa"`       //body surface area auto-calculated
+	BloodGroup	string	`json:"blood_group,omitempty"` //Blood Group
+}
+
+type ClinicalFlags struct {
+	Pregnant  bool `json:"is_pregnant"`  //Pregnancy Indicator
+	Lactation bool `json:"is_lactating"` // Lactation indicator
 }
 
 // ClinicalCase is the root structure representing a full clinical summary.
@@ -56,7 +64,8 @@ type ClinicalCase struct {
 	Prescriptions []Prescription               `json:"prescriptions,omitempty"`  //Prescriptions
 	Extra         map[string]map[string]string `json:"extra,omitempty"`          //Extra information
 	SpecialtyData any                          `json:"specialty_data,omitempty"` //Specialty data
-	AbnormalFlags []AbnormalFlag               `json:"abnormal_flags,omitempty"` //Abnormal flags
+	AbnormalFlags []AbnormalFlag               `json:"abnormal_flags,omitempty"` //Abnormal flags derived from the case
+	ClinicalFlags ClinicalFlags                `json:"clinical_flags"`           //Clinical flags patient already have such as pregnancy, lactation, etc
 	Warnings      []string                     `json:"warnings,omitempty"`       //Warnings
 }
 
@@ -72,8 +81,6 @@ func NewClinicalCase() ClinicalCase {
 		Warnings:      []string{},
 	}
 }
-
-
 
 // AddWarning is a method that appends a non-fatal warning message to the 'Warnings' slice array.
 func (c *ClinicalCase) AddWarning(msg string) {

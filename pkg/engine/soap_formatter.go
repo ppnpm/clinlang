@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -84,7 +85,8 @@ func FormatSOAP(c ClinicalCase) string {
 	if len(c.Imaging) > 0 {
 		sb.WriteString("Imaging/Rad    : ")
 		pairs := []string{}
-		for k, v := range c.Imaging {
+		for _, k := range sortedMapKeys(c.Imaging) {
+			v := c.Imaging[k]
 			if v == "true" {
 				pairs = append(pairs, strings.ToUpper(k))
 			} else {
@@ -97,7 +99,8 @@ func FormatSOAP(c ClinicalCase) string {
 	if len(c.Labs) > 0 {
 		sb.WriteString("Labs           : ")
 		pairs := []string{}
-		for k, v := range c.Labs {
+		for _, k := range sortedMapKeys(c.Labs) {
+			v := c.Labs[k]
 			if v == "true" {
 				pairs = append(pairs, strings.ToUpper(k))
 			} else {
@@ -140,10 +143,12 @@ func FormatSOAP(c ClinicalCase) string {
 
 	// Extension data (labs, exam, etc.) under Objective
 	if len(c.Extra) > 0 {
-		for cmd, kv := range c.Extra {
+		for _, cmd := range sortedMapKeys(c.Extra) {
+			kv := c.Extra[cmd]
 			sb.WriteString(fmt.Sprintf("%-15s: ", strings.ToUpper(cmd)))
 			pairs := []string{}
-			for k, v := range kv {
+			for _, k := range sortedMapKeys(kv) {
+				v := kv[k]
 				if v == "true" {
 					pairs = append(pairs, k)
 				} else {
@@ -241,11 +246,15 @@ func formatPatientLine(p Patient) string {
 	if p.Height > 0 {
 		line += fmt.Sprintf(" | Ht: %gcm", p.Height)
 	}
-	if p.GPAL != "" {
-		line += fmt.Sprintf(" | %s", p.GPAL)
-	}
-	if p.MOA != "" {
-		line += fmt.Sprintf(" | MOA: %s", p.MOA)
-	}
+	
 	return line
+}
+
+func sortedMapKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
 }

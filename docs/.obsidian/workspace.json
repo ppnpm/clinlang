@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "commands.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "commands"
             }
           }
         ]
@@ -185,10 +185,15 @@
   },
   "active": "b943040e1ca9560a",
   "lastOpenFiles": [
+    "commands.md",
+    "commands/pt.md",
+    "Untitled.canvas",
+    "kjl.md",
+    "commands",
+    "README.md",
     "templates/obstetric.md",
     "templates/fever.md",
     "templates/chest-pain.md",
-    "README.md",
     "special-cases.md"
   ]
 }

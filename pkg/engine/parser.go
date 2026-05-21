@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"maps"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ type ParserFunc func(tokens []string, c *ClinicalCase)
 
 var coreCommands = map[string]ParserFunc{
 	"pt": func(tokens []string, c *ClinicalCase) {
-		ParsePatient(tokens, c)
+		ParsePatient(tokens, c, nil) // nil = no extensions (overridden in ParseString)
 	},
 	"cc": func(tokens []string, c *ClinicalCase) {
 		// since cc is a free text, all the tokens in the slice would be joined and make a long string. Hence for now let it be like that later, I think we will built a parser for CC as well. I think CC would be written in order of time.
@@ -40,10 +41,10 @@ var coreCommands = map[string]ParserFunc{
 		c.DDX = strings.Join(tokens, " ")
 	},
 	"sx": func(tokens []string, c *ClinicalCase) {
-		ParseSymptoms(tokens, c)
+		ParseSymptoms(tokens, c, nil) // nil = no extensions (overridden in ParseString)
 	},
 	"vitals": func(tokens []string, c *ClinicalCase) {
-		ParseVitals(tokens, c)
+		ParseVitals(tokens, c, nil) // nil = no extensions (overridden in ParseString)
 	},
 	// New prescription
 	"rx": func(tokens []string, c *ClinicalCase) {
@@ -115,10 +116,26 @@ func GetCoreCommandNames() []string {
 func ParseString(input string) ClinicalCase {
 	c := NewClinicalCase()
 	c.Profile = "general"
+	var pluginDataStore map[string]any
 
 	// Local copy of commands to allow plugin injection.
 	activeCommands := make(map[string]ParserFunc)
 	maps.Copy(activeCommands, coreCommands)
+
+	// ── CommandTokenRegistry ──────────────────────────────────────────────────
+	// One fresh registry per parse session — zero global state.
+	// Starts empty; populated when a plugin with CommandExtendable is loaded.
+	// Re-register the three extensible core commands so they all share this reg.
+	reg := NewCommandTokenRegistry()
+	activeCommands["pt"] = func(tokens []string, c *ClinicalCase) {
+		ParsePatient(tokens, c, reg)
+	}
+	activeCommands["vitals"] = func(tokens []string, c *ClinicalCase) {
+		ParseVitals(tokens, c, reg)
+	}
+	activeCommands["sx"] = func(tokens []string, c *ClinicalCase) {
+		ParseSymptoms(tokens, c, reg)
+	}
 
 	lines := strings.Split(input, "\n")
 
@@ -147,19 +164,56 @@ func ParseString(input string) ClinicalCase {
 
 		// Handle @profile plugin loading - check for @prefix directly
 		if strings.HasPrefix(cmd, "@") {
-			profileName := strings.TrimPrefix(cmd, "@")
-			if profileName == "profile" && len(tokens) > 0 {
-				profileName = strings.ToLower(tokens[0])
+			profileSpec := strings.TrimPrefix(cmd, "@")
+			if profileSpec == "profile" && len(tokens) > 0 {
+				profileSpec = strings.ToLower(tokens[0])
 			}
-			
-			if profileName != "" {
-				c.Profile = profileName
-				plugin := GetPlugin(profileName)
-				if plugin != nil {
-					c.SpecialtyData = plugin.InitData()
-					maps.Copy(activeCommands, plugin.GetCommands())
-				} else {
-					c.AddWarning(fmt.Sprintf("Line %d: Unknown profile '%s'", lineNum+1, profileName))
+
+			if profileSpec != "" {
+				profiles := parseProfileList(profileSpec)
+				if len(profiles) == 0 {
+					c.AddWarning(fmt.Sprintf("Line %d: Invalid profile declaration", lineNum+1))
+					continue
+				}
+
+				c.Profile = strings.Join(profiles, "+")
+				if len(profiles) > 1 {
+					pluginDataStore = make(map[string]any, len(profiles))
+					c.SpecialtyData = pluginDataStore
+				}
+
+				for _, profileName := range profiles {
+					plugin := GetPlugin(profileName)
+					if plugin == nil {
+						c.AddWarning(fmt.Sprintf("Line %d: Unknown profile '%s'", lineNum+1, profileName))
+						continue
+					}
+
+					data := plugin.InitData()
+					if len(profiles) == 1 {
+						c.SpecialtyData = data
+					} else {
+						pluginDataStore[profileName] = data
+					}
+
+					for pluginCmd, pluginHandler := range plugin.GetCommands() {
+						normalizedCmd := strings.ToLower(pluginCmd)
+						if _, exists := activeCommands[normalizedCmd]; exists {
+							c.AddWarning(fmt.Sprintf("Line %d: Plugin '%s' command '%s' ignored (additive-only mode)", lineNum+1, profileName, normalizedCmd))
+							continue
+						}
+						activeCommands[normalizedCmd] = wrapPluginCommand(data, pluginHandler)
+					}
+
+					if extPlugin, ok := plugin.(CommandExtendable); ok {
+						for extCmd, tokenMap := range extPlugin.GetCommandTokens() {
+							for prefix, fn := range tokenMap {
+								if !reg.RegisterUnique(extCmd, prefix, wrapTokenExt(data, fn)) {
+									c.AddWarning(fmt.Sprintf("Line %d: Plugin '%s' token extension '%s' for command '%s' ignored (already registered)", lineNum+1, profileName, strings.ToLower(prefix), strings.ToLower(extCmd)))
+								}
+							}
+						}
+					}
 				}
 			}
 			continue
@@ -200,6 +254,43 @@ func ParseString(input string) ClinicalCase {
 	}
 
 	return c
+}
+
+func parseProfileList(spec string) []string {
+	parts := strings.Split(strings.ToLower(strings.TrimSpace(spec)), "+")
+	unique := make(map[string]struct{}, len(parts))
+	var out []string
+	for _, part := range parts {
+		name := strings.TrimSpace(part)
+		if name == "" {
+			continue
+		}
+		if _, exists := unique[name]; exists {
+			continue
+		}
+		unique[name] = struct{}{}
+		out = append(out, name)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func wrapPluginCommand(data any, handler ParserFunc) ParserFunc {
+	return func(tokens []string, c *ClinicalCase) {
+		original := c.SpecialtyData
+		c.SpecialtyData = data
+		defer func() { c.SpecialtyData = original }()
+		handler(tokens, c)
+	}
+}
+
+func wrapTokenExt(data any, fn TokenExtFunc) TokenExtFunc {
+	return func(token string, c *ClinicalCase) bool {
+		original := c.SpecialtyData
+		c.SpecialtyData = data
+		defer func() { c.SpecialtyData = original }()
+		return fn(token, c)
+	}
 }
 
 // ParseFile reads a .cln file from disk and calls ParseString.

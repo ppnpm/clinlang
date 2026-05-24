@@ -37,7 +37,6 @@ O — OBJECTIVE
 Vitals         : HR: 120 bpm | SpO2: 98% | Temp: 102.1 | RR: 26 /min
 Physical Exam  : general:active well_hydrated throat:mild_erythema chest:clear
 Labs           : HB 11.5 | WBC 8000 | DENGUE -
-⚠ Abnormals    : ⚠ HR 120 bpm | ⚠ RR 26 /min 
 
 A — ASSESSMENT
 ─────────────────────────

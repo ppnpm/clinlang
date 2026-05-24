@@ -29,7 +29,8 @@ Start every line with one of these short commands to tell ClinLang what you are 
 *   **`sx`** (Symptoms): Use `+` for severity.
     *   `sx chestpain+++ sob++ fever-`
 *   **`vitals`**: Attach the numbers directly to the vital signs.
-    *   `vitals bp120/80 hr90 rr18 temp98.6 spo299`
+    *   `vitals bp120/80 hr90 rr18 temp98.6F spo299`
+    *   Temperature requires an explicit unit suffix (`F` or `C`); a bare `temp98.6` defaults to Fahrenheit. The engine does not convert between units — see [reference-ranges.md](reference-ranges.md).
 *   **`pe`** (Physical Exam): Use colons for body systems.
     *   `pe chest:clear cvs:normal abd:soft`
 

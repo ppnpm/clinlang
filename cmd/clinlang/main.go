@@ -9,118 +9,13 @@ import (
 	"strings"
 )
 
+// disclaimer is shown in the CLI banner and the HTTP /health endpoint.
+// Keep this in sync with DISCLAIMER.md at the repository root.
+const disclaimer = "ClinLang is a personal note-taking and templating tool — not a medical device. No diagnosis, dosing, or decision support."
+
 // =============================================================================
 // OUTPUT FORMATTERS
 // =============================================================================
-
-// PrintClinicalNote prints a human-readable structured clinical note.
-func PrintClinicalNote(c engine.ClinicalCase) {
-	sep := strings.Repeat("─", 50)
-	fmt.Println(sep)
-	fmt.Println("CLINICAL NOTE")
-	fmt.Println(sep)
-
-	fmt.Printf("ID     : %s\n", c.Patient.Id)
-
-	//Accessing Patient's Age
-	age := fmt.Sprintf("%d", c.Patient.Age)
-	if c.Patient.Age == 0 {
-		age = "?"
-	}
-
-
-	fmt.Printf("Patient: %s/%s", age, c.Patient.Sex)
-	if c.Patient.Weight > 0 {
-		fmt.Printf("  Wt: %gkg", c.Patient.Weight)
-	}
-	if c.Patient.Height > 0 {
-		fmt.Printf("  Ht: %gcm", c.Patient.Height)
-	}
-	fmt.Println()
-	fmt.Println(sep)
-
-	printField("Chief Complaint", c.CC)
-	printField("HPI", c.HPI)
-	printField("Past Medical History", c.PMH)
-
-	fmt.Printf("Vitals : %s\n", engine.FormatVitals(c.Vitals))
-
-	// Abnormal flags
-	if len(c.AbnormalFlags) > 0 {
-		fmt.Println()
-		for _, f := range c.AbnormalFlags {
-			icon := "⚠"
-			if f.Severity == engine.SeverityCritical {
-				icon = "🔴 CRITICAL"
-			}
-			fmt.Printf("  %s  %s: %s — %s\n", icon, f.Field, f.Value, f.Message)
-		}
-	}
-
-	// Symptoms
-	if len(c.Symptoms) > 0 {
-		fmt.Println("Symptoms:")
-		for _, s := range c.Symptoms {
-			label := engine.IntensityLabel(s.Intensity)
-			dur := ""
-			if s.Duration != "" {
-				dur = " × " + s.Duration
-			}
-			fmt.Printf("  ▸ %-20s [%s%s]\n", s.Name, label, dur)
-		}
-	}
-
-	// Extension data
-	if len(c.Extra) > 0 {
-		fmt.Println(sep)
-		fmt.Println("Additional Data:")
-		for cmd, kv := range c.Extra {
-			fmt.Printf("  [%s]\n", strings.ToUpper(cmd))
-			for k, v := range kv {
-				if v == "true" {
-					fmt.Printf("    ▸ %s\n", k)
-				} else {
-					fmt.Printf("    ▸ %-12s: %s\n", k, v)
-				}
-			}
-		}
-	}
-
-	// Specialty Plugin Data
-	if c.SpecialtyData != nil {
-		fmt.Println(sep)
-		fmt.Printf("Specialty Profile: %s\n", strings.ToUpper(c.Profile))
-		b, _ := json.MarshalIndent(c.SpecialtyData, "  ", "  ")
-		str := string(b)
-		str = strings.TrimPrefix(str, "{\n")
-		str = strings.TrimSuffix(str, "\n}")
-		fmt.Println(str)
-	}
-
-	// Prescriptions
-	if len(c.Prescriptions) > 0 {
-		fmt.Println(sep)
-		fmt.Print(engine.FormatPrescriptions(c.Prescriptions))
-	}
-
-	fmt.Println(sep)
-	printField("Diagnosis", c.DX)
-	fmt.Println(sep)
-
-	if len(c.Warnings) > 0 {
-		fmt.Println("⚠  Warnings:")
-		for _, w := range c.Warnings {
-			fmt.Println("   •", w)
-		}
-		fmt.Println(sep)
-	}
-}
-
-func printField(label, value string) {
-	if value != "" {
-		fmt.Printf("%-22s: %s\n", label, value)
-	}
-}
 
 // PrintJSON outputs the case as indented JSON.
 func PrintJSON(c engine.ClinicalCase) {
@@ -132,23 +27,40 @@ func PrintJSON(c engine.ClinicalCase) {
 	fmt.Println(string(b))
 }
 
-// PrintValidation runs all checks and reports warnings + abnormal flags.
-func PrintValidation(c engine.ClinicalCase) {
-	fmt.Println("=== Validation Report ===")
-	if len(c.Warnings) == 0 && len(c.AbnormalFlags) == 0 {
-		fmt.Println("✔  No issues found.")
+// PrintLintReport prints parser warnings and out-of-range markers in
+// neutral form. There is no pass/fail and no severity.
+func PrintLintReport(c engine.ClinicalCase) {
+	fmt.Println("=== Lint Report ===")
+	if len(c.Warnings) == 0 && len(c.RangeMarkers) == 0 {
+		fmt.Println("No parser warnings. No values outside reference ranges.")
 		return
 	}
 	for _, w := range c.Warnings {
-		fmt.Println("⚠ ", w)
+		fmt.Println("warning:", w)
 	}
-	for _, f := range c.AbnormalFlags {
-		icon := "⚠ "
-		if f.Severity == engine.SeverityCritical {
-			icon = "🔴"
+	for _, m := range c.RangeMarkers {
+		fmt.Printf("out-of-range: %s %s [ref %s, %s]\n",
+			m.Field, m.Value, m.ReferenceRange, m.Source)
+	}
+}
+
+// =============================================================================
+// ARG HELPERS
+// =============================================================================
+
+// extractFlag walks args, removes any token equal to flag, and returns
+// the remaining tokens plus whether the flag was present.
+func extractFlag(args []string, flag string) ([]string, bool) {
+	out := make([]string, 0, len(args))
+	found := false
+	for _, a := range args {
+		if a == flag {
+			found = true
+			continue
 		}
-		fmt.Printf("%s [%s] %s: %s — %s\n", icon, strings.ToUpper(f.Severity), f.Field, f.Value, f.Message)
+		out = append(out, a)
 	}
+	return out, found
 }
 
 // =============================================================================
@@ -156,52 +68,78 @@ func PrintValidation(c engine.ClinicalCase) {
 // =============================================================================
 
 func main() {
+	// Optional override of the embedded reference ranges. Set
+	// CLINLANG_REFERENCE_RANGES to the path of a JSON file with the
+	// same schema as pkg/engine/reference_ranges.json. See
+	// docs/reference-ranges.md.
+	if path := os.Getenv("CLINLANG_REFERENCE_RANGES"); path != "" {
+		if err := engine.LoadReferenceRanges(path); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to load reference ranges from %s: %v\n", path, err)
+		}
+	}
+
 	args := os.Args
+
+	// No args: launch the server in the configured mode and, in
+	// local mode, open the user's browser to the bind URL. This is
+	// the "double-click the binary" experience.
 	if len(args) < 2 {
-		printUsage()
+		StartServer("", "", true)
 		return
 	}
 
 	subcommand := strings.ToLower(args[1])
 
-	//## Server command
-
-	// `clinlang server` takes an optional --port flag, no file needed, 'server' subcommand requires only 2 arguments to run
+	// `clinlang server [--mode local|hosted] [--port N]` — explicit
+	// server start with no browser auto-launch.
 	if subcommand == "server" {
-		port := "8080"
+		port := ""
+		mode := ""
 		for i, a := range args {
 			if a == "--port" && i+1 < len(args) {
-				port = args[i+1] // checking --port from the arguments and updating default port 8080 to custom value from the arguments : ./clinlang.exe server --port 9090
+				port = args[i+1]
+			}
+			if a == "--mode" && i+1 < len(args) {
+				mode = args[i+1]
 			}
 		}
-		StartServer(port)
+		StartServer(mode, port, false)
 		return
 	}
 
-	//## File based commands to read .cln file
+	// File-based subcommands: parse flags, then resolve the first
+	// remaining positional as the file path.
+	rest := args[2:]
+	rest, markersFlag := extractFlag(rest, "--markers")
 
-	//ensures that filepath is provided for file based commands: ./clinlang.exe run <file.cln>
-	if len(args) < 3 {
+	if len(rest) < 1 {
 		printUsage()
 		return
 	}
 
-	filePath := args[2]
+	filePath := rest[0]
 	c, err := engine.ParseFile(filePath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 
+	opts := engine.FormatOptions{ShowRangeMarkers: markersFlag}
+
 	switch subcommand {
 	case "run":
-		PrintClinicalNote(c)
+		fmt.Print(engine.FormatPlainNote(c))
 	case "json":
 		PrintJSON(c)
 	case "soap":
-		fmt.Print(engine.FormatSOAP(c))
+		fmt.Print(engine.FormatSOAPWithOptions(c, opts))
+	case "markdown", "md":
+		fmt.Print(engine.FormatMarkdownWithOptions(c, opts))
+	case "lint":
+		PrintLintReport(c)
 	case "validate":
-		PrintValidation(c)
+		fmt.Fprintln(os.Stderr, "Deprecation: 'validate' is renamed to 'lint' and will be removed in a future release.")
+		PrintLintReport(c)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown subcommand: %s\n\n", subcommand)
 		printUsage()
@@ -210,12 +148,23 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`ClinLang — Clinical Shorthand DSL
+	fmt.Println(disclaimer)
+	fmt.Println()
+	fmt.Println(`ClinLang — Personal Clinical Shorthand & Templating Tool
 
 Usage:
-  clinlang run      <file.cln>         Formatted clinical note
-  clinlang soap     <file.cln>         SOAP-format note
-  clinlang json     <file.cln>         Structured JSON outputclin
-  clinlang validate <file.cln>         Validation + abnormal flag report
-  clinlang server   [--port 8080]      Start HTTP JSON API server`)
+  clinlang run      <file.cln>             Formatted clinical note
+  clinlang soap     <file.cln> [--markers] SOAP-format note (markers off by default)
+  clinlang markdown <file.cln> [--markers] Markdown export (markers off by default)
+  clinlang json     <file.cln>             Structured JSON output
+  clinlang lint     <file.cln>             Parser warnings + reference-range markers
+  clinlang server   [--mode local|hosted] [--port 8080]
+                                           Start HTTP JSON API server
+
+Env:
+  CLINLANG_MODE=local|hosted               Deployment mode (default: local)
+  CLINLANG_BIND=host:port                  Override bind address
+  CLINLANG_WORKSPACE=<path>                Note storage root (required in hosted)
+  CLINLANG_REFERENCE_RANGES=<path>         Override embedded reference ranges
+                                            (see docs/reference-ranges.md)`)
 }

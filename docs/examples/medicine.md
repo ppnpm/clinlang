@@ -36,7 +36,6 @@ Vitals         : BP: 160/100 | HR: 105 bpm | SpO2: 94% | Temp: 98.6 | RR: 22 /mi
 Physical Exam  : cvs:s1s2_normal no_murmur rs:clear
 Imaging/Rad    : ECG anterior stemi
 Labs           : HB 13.5 | WBC 11000 | NA 138 | K 4.1 | CR 1.2 | TROP +
-⚠ Abnormals    : ⚠ HR 105 bpm | ⚠ RR 22 /min | ⚠ TROP + Positive TROP marker
 
 A — ASSESSMENT
 ─────────────────────────

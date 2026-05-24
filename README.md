@@ -1,6 +1,9 @@
 # ClinLang
 
-ClinLang is a high-speed, domain-specific language (DSL) and parsing engine for clinical documentation. It allows doctors to use simple shorthand to generate fully structured JSON data and perfectly formatted SOAP notes.
+ ClinLang is a personal shorthand and templating tool for clinicians' own notes. It expands abbreviations, formats notes in SOAP/Markdown/JSON, and helps you write faster. It is not a
+  ▎ medical device, does not provide diagnosis, treatment, dosing, or clinical decision support, and must not be used as the basis for any clinical decision. All clinical content is authored
+  ▎ by the user; ClinLang only transcribes and formats it.
+  
 
 Built purely in Go, it runs anywhere: from the terminal, as an HTTP API, and seamlessly compiled to WebAssembly for browser-based offline Progressive Web Apps.
 

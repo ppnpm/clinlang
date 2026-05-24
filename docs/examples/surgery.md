@@ -39,7 +39,6 @@ Vitals         : BP: 110/70 | HR: 98 bpm | SpO2: 99% | Temp: 100.2 | RR: 18 /min
 Physical Exam  : abd:tender_rif rebound_tenderness+ rovsings_sign+
 Imaging/Rad    : USG inflamed appendix 9mm with free fluid
 Labs           : HB 12.2 | WBC 16000 | PLT 250000
-⚠ Abnormals    : ⚠ WBC 16000 /μL
 
 A — ASSESSMENT
 ─────────────────────────

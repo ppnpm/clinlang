@@ -7,16 +7,18 @@ import (
 	"strings"
 )
 
-// FormatSOAP generates a SOAP-structured clinical note from a parsed ClinicalCase.
+// FormatSOAP generates a SOAP-structured clinical note from a parsed
+// ClinicalCase using the default options (no out-of-range markers).
 //
 // SOAP = Subjective / Objective / Assessment / Plan
-//
-// This is the universal documentation format used in:
-//   - Ward rounds
-//   - ER documentation
-//   - Clinic notes
-//   - Referral letters
 func FormatSOAP(c ClinicalCase) string {
+	return FormatSOAPWithOptions(c, FormatOptions{})
+}
+
+// FormatSOAPWithOptions produces the same SOAP note with explicit
+// rendering options. Set opts.ShowRangeMarkers = true to append a
+// "Notes (out of ref)" subsection at the end of the Objective block.
+func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 	sb := strings.Builder{}
 
 	sep := strings.Repeat("─", 50)
@@ -26,7 +28,7 @@ func FormatSOAP(c ClinicalCase) string {
 		sb.WriteString(fmt.Sprintf("Context: %s\n", c.Day))
 	}
 	if c.Allergies != "" {
-		sb.WriteString(fmt.Sprintf("\n[!] ALLERGIES: %s [!]\n", strings.ToUpper(c.Allergies)))
+		sb.WriteString(fmt.Sprintf("\n[!] ALLERGIES: %s [!]\n", strings.ToUpper(displayText(c.Allergies))))
 	}
 	sb.WriteString(sep + "\n\n")
 
@@ -35,19 +37,19 @@ func FormatSOAP(c ClinicalCase) string {
 	sb.WriteString(strings.Repeat("─", 25) + "\n")
 
 	if c.CC != "" {
-		sb.WriteString(fmt.Sprintf("Chief Complaint: %s\n", c.CC))
+		sb.WriteString(fmt.Sprintf("Chief Complaint: %s\n", displayText(c.CC)))
 	}
 	if c.HPI != "" {
-		sb.WriteString(fmt.Sprintf("HPI            : %s\n", c.HPI))
+		sb.WriteString(fmt.Sprintf("HPI            : %s\n", displayText(c.HPI)))
 	}
 	if c.PMH != "" {
-		sb.WriteString(fmt.Sprintf("PMH            : %s\n", c.PMH))
+		sb.WriteString(fmt.Sprintf("PMH            : %s\n", displayText(c.PMH)))
 	}
 	if c.SH != "" {
-		sb.WriteString(fmt.Sprintf("Social History : %s\n", c.SH))
+		sb.WriteString(fmt.Sprintf("Social History : %s\n", displayText(c.SH)))
 	}
 	if c.FH != "" {
-		sb.WriteString(fmt.Sprintf("Family History : %s\n", c.FH))
+		sb.WriteString(fmt.Sprintf("Family History : %s\n", displayText(c.FH)))
 	}
 
 	// Symptoms listed under subjective
@@ -55,7 +57,7 @@ func FormatSOAP(c ClinicalCase) string {
 		sb.WriteString("Symptoms       : ")
 		symParts := []string{}
 		for _, s := range c.Symptoms {
-			part := s.Name
+			part := displayText(s.Name)
 			if s.Intensity != "" {
 				part += " (" + s.Intensity
 				if s.Duration != "" {
@@ -79,13 +81,13 @@ func FormatSOAP(c ClinicalCase) string {
 	sb.WriteString(fmt.Sprintf("Vitals         : %s\n", FormatVitals(c.Vitals)))
 
 	if c.PE != "" {
-		sb.WriteString(fmt.Sprintf("Physical Exam  : %s\n", c.PE))
+		sb.WriteString(fmt.Sprintf("Physical Exam  : %s\n", displayText(c.PE)))
 	}
 
 	if len(c.Imaging) > 0 {
 		sb.WriteString("Imaging/Rad    : ")
 		pairs := []string{}
-		for _, k := range sortedMapKeys(c.Imaging) {
+		for _, k := range SortedMapKeys(c.Imaging) {
 			v := c.Imaging[k]
 			if v == "true" {
 				pairs = append(pairs, strings.ToUpper(k))
@@ -99,7 +101,7 @@ func FormatSOAP(c ClinicalCase) string {
 	if len(c.Labs) > 0 {
 		sb.WriteString("Labs           : ")
 		pairs := []string{}
-		for _, k := range sortedMapKeys(c.Labs) {
+		for _, k := range SortedMapKeys(c.Labs) {
 			v := c.Labs[k]
 			if v == "true" {
 				pairs = append(pairs, strings.ToUpper(k))
@@ -127,27 +129,24 @@ func FormatSOAP(c ClinicalCase) string {
 		}
 	}
 
-	// Abnormal flags inline under objective
-	if len(c.AbnormalFlags) > 0 {
-		sb.WriteString("⚠ Abnormals    : ")
-		flagParts := []string{}
-		for _, f := range c.AbnormalFlags {
-			icon := "⚠"
-			if f.Severity == SeverityCritical {
-				icon = "🔴"
-			}
-			flagParts = append(flagParts, fmt.Sprintf("%s %s %s", icon, f.Field, f.Value))
+	// Out-of-range markers — opt-in via FormatOptions.ShowRangeMarkers.
+	// Rendered as a neutral subsection at the end of the Objective block.
+	// No icons, no severity, no clinical interpretation.
+	if opts.ShowRangeMarkers && len(c.RangeMarkers) > 0 {
+		sb.WriteString("Notes (out of ref):\n")
+		for _, m := range c.RangeMarkers {
+			sb.WriteString(fmt.Sprintf("  - %s %s [outside ref %s, %s]\n",
+				m.Field, m.Value, m.ReferenceRange, m.Source))
 		}
-		sb.WriteString(strings.Join(flagParts, " | ") + "\n")
 	}
 
 	// Extension data (labs, exam, etc.) under Objective
 	if len(c.Extra) > 0 {
-		for _, cmd := range sortedMapKeys(c.Extra) {
+		for _, cmd := range SortedMapKeys(c.Extra) {
 			kv := c.Extra[cmd]
 			sb.WriteString(fmt.Sprintf("%-15s: ", strings.ToUpper(cmd)))
 			pairs := []string{}
-			for _, k := range sortedMapKeys(kv) {
+			for _, k := range SortedMapKeys(kv) {
 				v := kv[k]
 				if v == "true" {
 					pairs = append(pairs, k)
@@ -166,13 +165,13 @@ func FormatSOAP(c ClinicalCase) string {
 	sb.WriteString(strings.Repeat("─", 25) + "\n")
 
 	if c.DX != "" {
-		sb.WriteString(fmt.Sprintf("Diagnosis      : %s\n", c.DX))
+		sb.WriteString(fmt.Sprintf("Diagnosis      : %s\n", displayText(c.DX)))
 	} else {
 		sb.WriteString("Diagnosis      : [Pending]\n")
 	}
 
 	if c.DDX != "" {
-		sb.WriteString(fmt.Sprintf("Differential   : %s\n", c.DDX))
+		sb.WriteString(fmt.Sprintf("Differential   : %s\n", displayText(c.DDX)))
 	}
 
 	sb.WriteString("\n")
@@ -250,7 +249,10 @@ func formatPatientLine(p Patient) string {
 	return line
 }
 
-func sortedMapKeys[T any](m map[string]T) []string {
+// SortedMapKeys returns the keys of m in lexicographically sorted order.
+// Exported so external callers (CLI, server, frontends) can render
+// deterministically — Go map iteration order is intentionally random.
+func SortedMapKeys[T any](m map[string]T) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

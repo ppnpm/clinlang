@@ -20,9 +20,19 @@ package obgyn
 
 import (
 	"clinlang/pkg/engine"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+// gaPattern matches gestational age values such as "34", "34w", "34W".
+// Anything else (e.g. "34www", "34ww", "wweek") fails to match and the
+// caller emits a warning.
+var gaPattern = regexp.MustCompile(`^(?i)(\d+)w?$`)
+
+// fhrPattern matches fetal heart rate values such as "142", "142bpm",
+// "142BPM". Anything else fails to match.
+var fhrPattern = regexp.MustCompile(`^(?i)(\d+)(?:bpm)?$`)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Plugin struct
@@ -135,14 +145,13 @@ func (p *ObGynPlugin) GetCommandTokens() map[string]map[string]engine.TokenExtFu
 				if !ok {
 					return false
 				}
-				raw := token[3:] // strip "ga:"
-				// Strip trailing 'w' or 'W' if present (e.g. "34w" → "34")
-				raw = strings.TrimRight(raw, "wW")
-				val, err := strconv.Atoi(strings.TrimSpace(raw))
-				if err != nil {
+				raw := strings.TrimSpace(token[3:]) // strip "ga:"
+				m := gaPattern.FindStringSubmatch(raw)
+				if m == nil {
 					c.AddWarning("obgyn: invalid gestational age value: " + token)
 					return true // we claimed it, but it was malformed
 				}
+				val, _ := strconv.Atoi(m[1])
 				data.GA = val
 				data.GAUnit = "w"
 				return true
@@ -159,14 +168,13 @@ func (p *ObGynPlugin) GetCommandTokens() map[string]map[string]engine.TokenExtFu
 				if !ok {
 					return false
 				}
-				raw := token[4:] // strip "fhr:"
-				// Strip optional "bpm" suffix
-				raw = strings.TrimRight(raw, "bpmBPM")
-				val, err := strconv.Atoi(strings.TrimSpace(raw))
-				if err != nil {
+				raw := strings.TrimSpace(token[4:]) // strip "fhr:"
+				m := fhrPattern.FindStringSubmatch(raw)
+				if m == nil {
 					c.AddWarning("obgyn: invalid fetal heart rate value: " + token)
 					return true
 				}
+				val, _ := strconv.Atoi(m[1])
 				data.FHR = val
 				return true
 			},

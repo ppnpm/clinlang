@@ -236,22 +236,16 @@ func ParseString(input string) ClinicalCase {
 		c.Patient.Id = GenerateId()
 	}
 
-	// Run abnormal value checks (no crashes, only flags)
-	CheckAbnormals(&c)
+	// Annotate values that fall outside user-configurable reference ranges.
+	// Transcription aid only — not clinical decision support.
+	CheckRangeMarkers(&c)
 
-	// Globally expand abbreviations so they appear in JSON
-	c.CC = ExpandAbbreviations(c.CC)
-	c.HPI = ExpandAbbreviations(c.HPI)
-	c.PMH = ExpandAbbreviations(c.PMH)
-	c.SH = ExpandAbbreviations(c.SH)
-	c.FH = ExpandAbbreviations(c.FH)
-	c.PE = ExpandAbbreviations(c.PE)
-	c.Allergies = ExpandAbbreviations(c.Allergies)
-	c.DX = ExpandAbbreviations(c.DX)
-	c.DDX = ExpandAbbreviations(c.DDX)
-	for i := range c.Symptoms {
-		c.Symptoms[i].Name = ExpandAbbreviations(c.Symptoms[i].Name)
-	}
+	// Note: user-typed text in c.CC / c.HPI / c.PMH / c.SH / c.FH / c.PE /
+	// c.Allergies / c.DX / c.DDX / c.Symptoms[].Name is preserved VERBATIM
+	// here. Abbreviation expansion happens only at format time (see the
+	// displayText() helper used by the SOAP / Markdown / plain-note
+	// formatters), so the JSON layer carries exactly what the clinician
+	// typed. Software does not silently substitute clinical terms.
 
 	return c
 }

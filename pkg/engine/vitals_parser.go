@@ -54,11 +54,24 @@ func ParseVitals(tokens []string, c *ClinicalCase, reg *CommandTokenRegistry) {
 			}
 
 		case strings.HasPrefix(tok, "temp"):
-			val, err := strconv.ParseFloat(tok[4:], 64)
+			// Accept "temp98.6" (default F), "temp98.6f", "temp37c".
+			// Suffix matching is case-insensitive (tok is already lowercased above).
+			rest := tok[4:]
+			unit := "F"
+			switch {
+			case strings.HasSuffix(rest, "f"):
+				rest = rest[:len(rest)-1]
+				unit = "F"
+			case strings.HasSuffix(rest, "c"):
+				rest = rest[:len(rest)-1]
+				unit = "C"
+			}
+			val, err := strconv.ParseFloat(rest, 64)
 			if err != nil {
 				c.AddWarning("Invalid temperature value: " + tok)
 			} else {
 				c.Vitals.Temp = val
+				c.Vitals.TempUnit = unit
 			}
 
 		case strings.HasPrefix(tok, "rr"):
@@ -94,7 +107,11 @@ func FormatVitals(v Vitals) string {
 		parts = append(parts, "SpO2: "+strconv.Itoa(v.SpO2)+"%")
 	}
 	if v.Temp != 0 {
-		parts = append(parts, fmt.Sprintf("Temp: %.1f°C", v.Temp))
+		unit := v.TempUnit
+		if unit == "" {
+			unit = "F"
+		}
+		parts = append(parts, fmt.Sprintf("Temp: %.1f %s", v.Temp, unit))
 	}
 	if v.RR != 0 {
 		parts = append(parts, "RR: "+strconv.Itoa(v.RR)+" /min")

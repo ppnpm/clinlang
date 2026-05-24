@@ -46,7 +46,6 @@ Vitals         : BP: 110/70 | HR: 110 bpm | SpO2: 92% | Temp: 101.4 | RR: 24 /mi
 Physical Exam  : cvs:rr s1s2 rs:creps_right_base
 Imaging/Rad    : CXR right lower lobe consolidation
 Labs           : HB 11.2 | WBC 18000 | CR 1.0 | NA 135
-⚠ Abnormals    : ⚠ HR 110 bpm | ⚠ SpO2 92% | ⚠ RR 24 /min | ⚠ WBC 18000 /μL
 
 A — ASSESSMENT
 ─────────────────────────
@@ -58,4 +57,12 @@ P — PLAN
 ──────────────────────────────────────────────────
 ```
 
-Notice how ClinLang automatically translated `dm2` into "Type 2 Diabetes Mellitus", expanded the prescription, and flagged the high heart rate and low oxygen for you!
+Notice how ClinLang translated `dm2` into "Type 2 Diabetes Mellitus" and expanded the prescription text. Abbreviation expansion is transcription only — the clinician supplies all clinical content.
+
+To see neutral out-of-range annotations (based on your own configurable reference ranges, off by default), append `--markers`:
+
+```bash
+clinlang soap --markers your-note.cln
+```
+
+This adds a "Notes (out of ref)" subsection to the Objective block. The annotations cite their reference range and source — they are transcription aids, not clinical decision support. See [reference-ranges.md](reference-ranges.md).

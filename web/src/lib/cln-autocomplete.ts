@@ -31,6 +31,16 @@ const CORE_COMMANDS: Array<{ name: string; description: string }> = [
   { name: 'alg', description: 'Allergies' },
 ];
 
+// Known prescription modifiers (frequencies, routes, duration prefix).
+// If any word preceding the cursor matches one of these or contains a digit,
+// we assume the user has finished typing the drug name and stop completing.
+const RX_MODIFIERS = new Set([
+  'od', 'bd', 'tds', 'qds', 'qid', 'tid', 'bid', 'stat', 'prn', 'nocte',
+  'po', 'iv', 'im', 'sc', 'sl', 'top', 'neb', 'inh',
+  'q1h', 'q4h', 'q6h', 'q8h', 'q12h', 'q24h', 'qam', 'qpm', 'qod', 'qw', 'qwk', 'biw', 'qm',
+  'x'
+]);
+
 // Cached drug list per query prefix. CodeMirror calls the completion
 // source on every keystroke; without caching we'd hit /api/v1/drugs
 // dozens of times for the same prefix.
@@ -82,22 +92,51 @@ async function completionSource(
     };
   }
 
-  // Case 2: inside an `rx` line — drug-name autocomplete on the last
-  // word the user is typing.
-  const rxMatch = before.match(/^rx\s+(?:.*\s)?([a-zA-Z][a-zA-Z0-9_-]*)$/i);
-  if (rxMatch) {
-    const word = rxMatch[1];
-    const start = ctx.pos - word.length;
-    const matches = await fetchDrugs(word);
+  // Case 2: inside an `rx` line — drug-name autocomplete
+  const rxPrefixMatch = before.match(/^rx\s+/i);
+  if (rxPrefixMatch) {
+    const rxContent = before.slice(rxPrefixMatch[0].length);
+    if (rxContent.trim().length === 0 && !ctx.explicit) {
+      return null;
+    }
+
+    const words = rxContent.split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    // Check if user is typing dose/frequency/route by inspecting preceding words.
+    const precedingWords = words.slice(0, words.length - 1);
+    const hasPrecedingModifiers = precedingWords.some(
+      (w) => /\d/.test(w) || RX_MODIFIERS.has(w.toLowerCase())
+    );
+
+    // If a preceding token is a modifier or the current token is a modifier/number,
+    // do not suggest drug names.
+    if (
+      hasPrecedingModifiers ||
+      /\d/.test(lastWord) ||
+      RX_MODIFIERS.has(lastWord.toLowerCase())
+    ) {
+      return null;
+    }
+
+    // The prefix query is the entire sequence of drug name words typed so far.
+    const drugPrefix = words.join(' ');
+    // We replace the entire user input since the command starts.
+    const fromIndex = line.from + rxPrefixMatch[0].length;
+
+    const matches = await fetchDrugs(drugPrefix);
     if (matches.length === 0) return null;
+
     return {
-      from: start,
+      from: fromIndex,
       options: matches.map((m) => ({
         label: m,
         type: 'class',
         apply: m + ' ',
       })),
-      validFor: /^[a-zA-Z0-9_-]*$/,
+      // Valid for regex ensures completions stay active as long as the user
+      // types letters, numbers, spaces, or hyphens/underscores.
+      validFor: /^[a-zA-Z0-9_\s-]*$/,
     };
   }
 

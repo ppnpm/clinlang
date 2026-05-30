@@ -97,6 +97,12 @@ async function request<T>(
   }
   return (await res.text()) as unknown as T;
 }
+// encodePath helper splits the path by '/' and encodes each individual
+// segment with encodeURIComponent to support special characters like '&', '?', '#'
+// while preserving path separators.
+function encodePath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/');
+}
 
 export const api = {
   health: () => request<HealthResponse>('/api/v1/health'),
@@ -146,7 +152,7 @@ export const api = {
 
   readFile: async (path: string): Promise<FileReadResult> => {
     const { data, response } = await requestWithMeta<FileContent & { etag?: string }>(
-      `/api/v1/files/${encodeURI(path)}`
+      `/api/v1/files/${encodePath(path)}`
     );
     return {
       path: data.path,
@@ -167,7 +173,7 @@ export const api = {
     const headers: Record<string, string> = {};
     if (ifMatchETag) headers['If-Match'] = ifMatchETag;
     const { data, response } = await requestWithMeta<{ path: string; etag?: string }>(
-      `/api/v1/files/${encodeURI(path)}`,
+      `/api/v1/files/${encodePath(path)}`,
       {
         method: 'PUT',
         body: JSON.stringify({ content }),
@@ -181,7 +187,7 @@ export const api = {
   },
 
   deleteFile: (path: string) =>
-    request<{ path: string }>(`/api/v1/files/${encodeURI(path)}`, {
+    request<{ path: string }>(`/api/v1/files/${encodePath(path)}`, {
       method: 'DELETE',
     }),
 
@@ -215,6 +221,26 @@ export const api = {
       '/api/v1/workspace/browse',
       { method: 'POST' }
     ),
+
+  getConfig: (filename: string) =>
+    request<any>(`/api/v1/config/${encodeURIComponent(filename)}`),
+
+  saveConfig: (filename: string, content: string) =>
+    request<{ status: string; path: string }>(`/api/v1/config/${encodeURIComponent(filename)}`, {
+      method: 'PUT',
+      body: content,
+    }),
+
+  writeBinaryFile: async (path: string, data: Uint8Array): Promise<{ path: string; etag: string }> => {
+    const res = await fetch(`${API_BASE}/api/v1/files/${encodePath(path)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: data as any,
+    });
+    if (!res.ok) throw new ApiError(res.status, await res.text().catch(() => '') || res.statusText);
+    const json = await res.json();
+    return { path: json.path, etag: json.etag || res.headers.get('ETag') || '' };
+  },
 };
 
 export { ApiError };

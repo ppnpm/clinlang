@@ -14,6 +14,7 @@ func parseInvestigationToken(tok string) (key, value string) {
 			if val != "" {
 				return tok[:len(k)], val
 			}
+			return tok, "true"
 		}
 	}
 
@@ -85,6 +86,14 @@ var radKeys = map[string]bool{
 
 // ParseIx acts as an umbrella, routing elements into either Labs or Imaging
 func ParseIx(tokens []string, c *ClinicalCase) {
+	var configRadKeys []string
+	if c != nil && c.Config != nil {
+		configRadKeys = c.Config.RadKeys
+	}
+	if len(configRadKeys) == 0 {
+		configRadKeys = DefaultConfig.RadKeys
+	}
+
 	for _, raw := range tokens {
 		tok := strings.TrimSpace(raw)
 		if tok == "" {
@@ -95,8 +104,8 @@ func ParseIx(tokens []string, c *ClinicalCase) {
 		// Auto routing based on prefix
 		routeToRad := false
 		lowerKey := strings.ToLower(key)
-		for r := range radKeys {
-			if strings.HasPrefix(lowerKey, r) {
+		for _, r := range configRadKeys {
+			if strings.HasPrefix(lowerKey, strings.ToLower(r)) {
 				routeToRad = true
 				break
 			}

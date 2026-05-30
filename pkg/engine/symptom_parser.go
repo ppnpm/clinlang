@@ -1,6 +1,9 @@
 package engine
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // intensityMap maps suffix strings to clinical descriptions.
 var intensityMap = map[string]string{
@@ -30,7 +33,7 @@ func ParseSymptoms(tokens []string, c *ClinicalCase, reg *CommandTokenRegistry) 
 			continue
 		}
 
-		sym := parseSymptomToken(tok)
+		sym := parseSymptomToken(tok, c)
 		if sym.Name == "" {
 			// ── Plugin token extension ────────────────────────────────────────
 			if reg.Try("sx", tok, c) {
@@ -44,11 +47,17 @@ func ParseSymptoms(tokens []string, c *ClinicalCase, reg *CommandTokenRegistry) 
 }
 
 // parseSymptomToken breaks a single token into a Symptom struct.
-func parseSymptomToken(tok string) Symptom {
-	// Order matters: check longer suffixes first.
-	intensitySuffixes := []string{"+++", "++", "+", "---", "--", "-"}
+func parseSymptomToken(tok string, c *ClinicalCase) Symptom {
+	intensityMap := getIntensityMap(c)
+	suffixes := make([]string, 0, len(intensityMap))
+	for k := range intensityMap {
+		suffixes = append(suffixes, k)
+	}
+	slices.SortFunc(suffixes, func(a, b string) int {
+		return len(b) - len(a)
+	})
 
-	for _, suffix := range intensitySuffixes {
+	for _, suffix := range suffixes {
 		idx := strings.Index(tok, suffix)
 		if idx == -1 {
 			continue
@@ -62,7 +71,7 @@ func parseSymptomToken(tok string) Symptom {
 
 		// Everything after the intensity marker may be a duration.
 		rest := tok[idx+len(suffix):]
-		duration := parseDuration(rest)
+		duration := parseDurationWithCase(rest, c)
 
 		return Symptom{
 			Name:      name,
@@ -71,17 +80,43 @@ func parseSymptomToken(tok string) Symptom {
 		}
 	}
 
-	// No intensity marker found — treat the whole token as a symptom name.
-	// The token might still end in a duration (e.g. "fever3d"), but that's
-	// unusual — we'll keep it as-is for simplicity.
+	// No intensity marker found — check if the token ends in a duration (e.g. "cough3d")
+	for i := 0; i < len(tok); i++ {
+		ch := tok[i]
+		if ch >= '0' && ch <= '9' {
+			if i == 0 || tok[i-1] < '0' || tok[i-1] > '9' {
+				// Potential duration start
+				rest := tok[i:]
+				if isDurationWithCase(rest, c) {
+					return Symptom{
+						Name:     tok[:i],
+						Duration: rest,
+					}
+				}
+			}
+		}
+	}
+
+	// Treat the whole token as a symptom name
 	return Symptom{Name: tok}
 }
 
-// parseDuration extracts a duration string like "3d", "2h", "1w", "30min" from the
-// remainder after the intensity marker. Returns empty string if not a duration.
-func parseDuration(s string) string {
-	num, unit := ParseDurationToken(s)
-	if num != "" && IsValidDurationUnit(unit) {
+func getIntensityMap(c *ClinicalCase) map[string]string {
+	if c != nil && c.Config != nil && len(c.Config.Symptoms) > 0 {
+		return c.Config.Symptoms
+	}
+	return intensityMap
+}
+
+func isDurationWithCase(s string, c *ClinicalCase) bool {
+	if c != nil && c.Config != nil {
+		return isDurationWithOptions(s, c.Config.Durations)
+	}
+	return isDuration(s)
+}
+
+func parseDurationWithCase(s string, c *ClinicalCase) string {
+	if isDurationWithCase(s, c) {
 		return s
 	}
 	return ""

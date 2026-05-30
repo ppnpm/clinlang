@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react';
-import { PanelLeft, PanelRight } from 'lucide-react';
+import { PanelLeft, Eye, EyeOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { FileTree } from '@/components/FileTree';
@@ -8,6 +8,7 @@ import { DisclaimerFooter } from '@/components/DisclaimerFooter';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ModeBadge } from '@/components/ModeBadge';
+import { ShortcutsHelp } from '@/components/ShortcutsHelp';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
@@ -23,10 +24,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const previewOpen = useStore((s) => s.previewOpen);
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const togglePreview = useStore((s) => s.togglePreview);
+  const highContrastFocus = useStore((s) => s.highContrastFocus);
 
   useEffect(() => {
     void init();
   }, [init]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (highContrastFocus) {
+      root.classList.add('high-contrast-focus');
+    } else {
+      root.classList.remove('high-contrast-focus');
+    }
+  }, [highContrastFocus]);
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -50,28 +61,49 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className={cn(
+              "h-8 w-8 transition-colors",
+              previewOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+            )}
             onClick={togglePreview}
-            aria-label="Toggle preview"
-            title="Toggle preview"
+            aria-label={previewOpen ? "Hide preview" : "Show preview"}
+            title={previewOpen ? "Hide preview" : "Show preview"}
           >
-            <PanelRight className="h-4 w-4" />
+            {previewOpen ? (
+              <Eye className="h-4 w-4" />
+            ) : (
+              <EyeOff className="h-4 w-4" />
+            )}
           </Button>
           <ThemeToggle />
+          <ShortcutsHelp />
           <SettingsDrawer />
         </div>
       </header>
 
       {/* Body: sidebar + main */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Sidebar */}
         <aside
           className={cn(
-            'shrink-0 overflow-hidden border-r border-border bg-muted/20 transition-[width] duration-150',
-            sidebarOpen ? 'w-60' : 'w-0'
+            'shrink-0 overflow-hidden border-border bg-muted/20 transition-all duration-150',
+            'md:static md:translate-x-0 md:h-full md:border-r',
+            sidebarOpen
+              ? 'w-60 fixed top-10 bottom-0 left-0 z-40 bg-background border-r shadow-lg translate-x-0'
+              : 'w-0 fixed top-10 bottom-0 left-0 -translate-x-full md:translate-x-0 md:border-r-0'
           )}
         >
           <FileTree />
         </aside>
+
+        {/* Mobile Sidebar backdrop */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 top-10 z-30 bg-background/80 backdrop-blur-sm md:hidden"
+            onClick={toggleSidebar}
+            aria-hidden="true"
+          />
+        )}
 
         <main className="flex flex-1 flex-col overflow-hidden">
           {children}

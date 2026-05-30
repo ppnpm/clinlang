@@ -80,7 +80,12 @@ func ParsePrescription(tokens []string, c *ClinicalCase) {
 	longestMatch := ""
 	consumedTokens := 1
 
-	for _, drug := range DrugsList {
+	drugs := DrugsList
+	if c != nil && c.Config != nil && len(c.Config.Drugs) > 0 {
+		drugs = c.Config.Drugs
+	}
+
+	for _, drug := range drugs {
 		drugLower := strings.ToLower(drug)
 		if strings.HasPrefix(fullText, drugLower) {
 			if len(fullText) == len(drugLower) || fullText[len(drugLower)] == ' ' {
@@ -106,13 +111,15 @@ func ParsePrescription(tokens []string, c *ClinicalCase) {
 
 			// Check if this token is a modifier
 			isMod := false
+			freqAliases := getFrequencyAliases(c)
+			rtAliases := getRouteAliases(c)
 			if containsDigit(tok) {
 				isMod = true
-			} else if _, ok := frequencyAliases[tok]; ok {
+			} else if _, ok := freqAliases[tok]; ok {
 				isMod = true
-			} else if _, ok := routeAliases[tok]; ok {
+			} else if _, ok := rtAliases[tok]; ok {
 				isMod = true
-			} else if isDuration(tok) || (strings.HasPrefix(tok, "x") && len(tok) > 1 && isDuration(tok[1:])) {
+			} else if isDurationWithCase(tok, c) || (strings.HasPrefix(tok, "x") && len(tok) > 1 && isDurationWithCase(tok[1:], c)) {
 				isMod = true
 			}
 
@@ -133,26 +140,28 @@ func ParsePrescription(tokens []string, c *ClinicalCase) {
 		// Duration: starts with 'x' → x7d, x5d
 		if strings.HasPrefix(tok, "x") && len(tok) > 1 {
 			rest := tok[1:]
-			if isDuration(rest) {
+			if isDurationWithCase(rest, c) {
 				p.Duration = rest
 				continue
 			}
 		}
 
 		// Plain duration without 'x' prefix: 7d, 5d, 2w
-		if isDuration(tok) {
+		if isDurationWithCase(tok, c) {
 			p.Duration = tok
 			continue
 		}
 
 		// Frequency alias
-		if freq, ok := frequencyAliases[tok]; ok {
+		freqAliases := getFrequencyAliases(c)
+		if freq, ok := freqAliases[tok]; ok {
 			p.Frequency = freq
 			continue
 		}
 
 		// Route alias
-		if route, ok := routeAliases[tok]; ok {
+		rtAliases := getRouteAliases(c)
+		if route, ok := rtAliases[tok]; ok {
 			p.Route = route
 			continue
 		}
@@ -174,10 +183,48 @@ func ParsePrescription(tokens []string, c *ClinicalCase) {
 	c.Prescriptions = append(c.Prescriptions, p)
 }
 
-// isDuration returns true for tokens like "7d", "2h", "1w", "10d", "30min", "3y".
-func isDuration(s string) bool {
-	num, unit := ParseDurationToken(s)
-	return num != "" && IsValidDurationUnit(unit)
+func getFrequencyAliases(c *ClinicalCase) map[string]string {
+	if c != nil && c.Config != nil && len(c.Config.Frequencies.Aliases) > 0 {
+		return c.Config.Frequencies.Aliases
+	}
+	return frequencyAliases
+}
+
+func getRouteAliases(c *ClinicalCase) map[string]string {
+	if c != nil && c.Config != nil && len(c.Config.Routes.Aliases) > 0 {
+		return c.Config.Routes.Aliases
+	}
+	return routeAliases
+}
+
+func getRouteExpansion(route string, config *ParserConfig) string {
+	if config != nil && len(config.Routes.Expansions) > 0 {
+		if val, ok := config.Routes.Expansions[route]; ok {
+			return val
+		}
+	}
+	if val, ok := DefaultConfig.Routes.Expansions[route]; ok {
+		return val
+	}
+	if val, ok := expandedRoutes[route]; ok {
+		return val
+	}
+	return route
+}
+
+func getFrequencyExpansion(freq string, config *ParserConfig) string {
+	if config != nil && len(config.Frequencies.Expansions) > 0 {
+		if val, ok := config.Frequencies.Expansions[freq]; ok {
+			return val
+		}
+	}
+	if val, ok := DefaultConfig.Frequencies.Expansions[freq]; ok {
+		return val
+	}
+	if val, ok := expandedFrequencies[freq]; ok {
+		return val
+	}
+	return freq
 }
 
 // containsDigit returns true if any character in s is 0-9.
@@ -226,7 +273,8 @@ var expandedRoutes = map[string]string{
 }
 
 // FormatPrescriptions formats the medication list for clinical note output.
-func FormatPrescriptions(prescriptions []Prescription) string {
+func FormatPrescriptions(c ClinicalCase) string {
+	prescriptions := c.Prescriptions
 	if len(prescriptions) == 0 {
 		return ""
 	}
@@ -238,24 +286,22 @@ func FormatPrescriptions(prescriptions []Prescription) string {
 			line += " " + p.Dose
 		}
 		
-		routeStr := p.Route
-		if expanded, ok := expandedRoutes[routeStr]; ok {
-			routeStr = expanded
-		}
+		routeStr := getRouteExpansion(p.Route, c.Config)
 		if routeStr != "" {
 			line += " " + routeStr
 		}
 
-		freqStr := p.Frequency
-		if expanded, ok := expandedFrequencies[freqStr]; ok {
-			freqStr = expanded
-		}
+		freqStr := getFrequencyExpansion(p.Frequency, c.Config)
 		if freqStr != "" {
 			line += ", " + freqStr
 		}
 
 		if p.Duration != "" {
-			line += " for " + p.Duration
+			var customDur map[string]DurationUnit
+			if c.Config != nil {
+				customDur = c.Config.Durations
+			}
+			line += " for " + ExpandDurationWithOptions(p.Duration, customDur)
 		}
 		sb.WriteString(line + "\n")
 	}

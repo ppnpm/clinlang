@@ -1,34 +1,37 @@
-# Quickstart
+# Quickstart Guide
 
-Write your very first clinical note in under 2 minutes.
-
-## How to use it
-1.  Open ClinLang on your device.
-2.  Type your commands into the editor.
-3.  Click "Generate Note" (or press Enter).
-That's it. Your note is ready to copy into the hospital system.
+Learn how to write and format your very first structured clinical note in under two minutes.
 
 ---
 
-## Your First Case
-Let's write a standard pneumonia admission. Just type exactly what you would say during a case presentation.
+## How It Works in 3 Steps
 
-**You type:**
+1. **Type Shorthand**: Open the ClinLang editor and write patient details using short, natural abbreviations (e.g., `htn` for hypertension, `rx` for prescriptions).
+2. **Review Live**: Watch the structured SOAP note render instantly in the preview panel on the right.
+3. **Copy and Save**: Click the copy icon in the preview panel to copy the formatted text and paste it directly into your hospital's electronic medical record (EMR).
+
+---
+
+## Try Writing Your First Note
+
+Copy and paste the following shorthand block into the editor to see how ClinLang processes an admission for community-acquired pneumonia:
+
 ```text
 pt 65M wt75
 cc fever and cough
 hpi fever for 3 days, productive cough with yellow sputum
 pmh htn dm2
 sx fever++ cough+++ sob+
-vitals bp110/70 hr110 spo292 temp101.4 rr24
+vitals bp110/70 hr110 spo292 temp101.4f rr24
 pe cvs:rr s1s2 rs:creps_right_base
-ix hb11.2 wbc18000 cr1.0 na135 
+ix hb11.2 wbc18000 na135 
 ix cxr:right lower lobe consolidation
 dx Community Acquired Pneumonia
 rx amoxicillin 500mg tds po
 ```
 
-**The Final Note You Get:**
+### What ClinLang Generates:
+
 ```text
 ──────────────────────────────────────────────────
 Patient: 65Y/M | Wt: 75kg  
@@ -42,10 +45,10 @@ Symptoms       : fever (severe); cough (very severe); sob (mild)
 
 O — OBJECTIVE
 ─────────────────────────
-Vitals         : BP: 110/70 | HR: 110 bpm | SpO2: 92% | Temp: 101.4 | RR: 24 /min
+Vitals         : BP: 110/70 | HR: 110 bpm | SpO2: 92% | Temp: 101.4 F | RR: 24 /min
 Physical Exam  : cvs:rr s1s2 rs:creps_right_base
 Imaging/Rad    : CXR right lower lobe consolidation
-Labs           : HB 11.2 | WBC 18000 | CR 1.0 | NA 135
+Labs           : HB 11.2 | WBC 18000 | NA 135
 
 A — ASSESSMENT
 ─────────────────────────
@@ -57,12 +60,16 @@ P — PLAN
 ──────────────────────────────────────────────────
 ```
 
-Notice how ClinLang translated `dm2` into "Type 2 Diabetes Mellitus" and expanded the prescription text. Abbreviation expansion is transcription only — the clinician supplies all clinical content.
+---
 
-To see neutral out-of-range annotations (based on your own configurable reference ranges, off by default), append `--markers`:
+## Things to Notice
+* **Automatic Abbreviations**: ClinLang expanded `dm2` to "Type 2 Diabetes Mellitus" and `htn` to "Hypertension".
+* **Prescription Translation**: The prescription line `rx amoxicillin 500mg tds po` was translated to clear patient-facing instructions: "Amoxicillin 500mg Orally, Three times daily".
+* **Auto-Categorization**: You do not have to write the SOAP headings. ClinLang reads your shorthand commands (like `ix` and `vitals`) and puts them into the correct **Subjective**, **Objective**, **Assessment**, or **Plan** sections.
+* **Typing Flexibility**: You can type commands in any order. The generator will always output a clean, standardized note.
 
-```bash
-clinlang soap --markers your-note.cln
-```
+---
 
-This adds a "Notes (out of ref)" subsection to the Objective block. The annotations cite their reference range and source — they are transcription aids, not clinical decision support. See [reference-ranges.md](reference-ranges.md).
+## Next Steps
+* Learn the shortcuts to write even faster: **[How to Write Fast](how-to-write-fast.md)**
+* Learn the full list of commands: **[Commands Directory](commands.md)**

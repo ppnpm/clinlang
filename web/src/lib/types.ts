@@ -34,6 +34,7 @@ export interface SOAPResponse {
   soap: string;
   warnings: string[];
   range_markers: RangeMarker[];
+  images?: string[];
 }
 
 export interface NoteResponse {
@@ -46,6 +47,7 @@ export interface MarkdownResponse {
   markdown: string;
   warnings: string[];
   range_markers: RangeMarker[];
+  images?: string[];
 }
 
 export interface LintResponse {

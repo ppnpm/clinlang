@@ -5,6 +5,10 @@
 /* eslint-disable */
 
 //////////
+// source: drugs.go
+
+
+//////////
 // source: formatters.go
 
 /**
@@ -19,6 +23,28 @@ export interface FormatOptions {
 //////////
 // source: models.go
 
+export interface FrequencyConfig {
+  aliases: { [key: string]: string};
+  expansions: { [key: string]: string};
+}
+export interface RouteConfig {
+  aliases: { [key: string]: string};
+  expansions: { [key: string]: string};
+}
+export interface DurationUnit {
+  aliases: string[];
+  word: string;
+  short: string;
+}
+export interface ParserConfig {
+  abbreviations: { [key: string]: string};
+  frequencies: FrequencyConfig;
+  routes: RouteConfig;
+  symptoms: { [key: string]: string};
+  rad_keys: string[];
+  durations: { [key: string]: DurationUnit};
+  drugs: string[];
+}
 /**
  * Vitals holds structured vital signs.
  * Temperature carries an explicit TempUnit ("F" or "C"). Inputs without
@@ -81,6 +107,7 @@ export interface ClinicalCase {
   labs?: { [key: string]: string}; // Structured labs dictionary
   imaging?: { [key: string]: string}; // Structured radiology/imaging
   prescriptions?: Prescription[]; // Prescriptions
+  images?: string[]; // Image attachment paths
   extra?: { [key: string]: { [key: string]: string}}; // Extra information
   specialty_data?: unknown; // Specialty data
   range_markers?: RangeMarker[]; // Out-of-range markers derived from user-configurable reference ranges (transcription aid, not clinical decision support)

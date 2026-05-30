@@ -8,101 +8,32 @@ import "strings"
 //
 // Keys must be lowercase (input is normalized before lookup).
 
-var Abbreviations = map[string]string{
-	// Chronic diseases
-	"dm1":   "Type 1 Diabetes Mellitus",
-	"dm2":   "Type 2 Diabetes Mellitus",
-	"htn":   "Hypertension",
-	"ihd":   "Ischaemic Heart Disease",
-	"cad":   "Coronary Artery Disease",
-	"chf":   "Congestive Heart Failure",
-	"af":    "Atrial Fibrillation",
-	"copd":  "COPD",
-	"tb":    "Tuberculosis",
-	"ckd":   "Chronic Kidney Disease",
-	"ckd1":  "CKD Stage 1",
-	"ckd2":  "CKD Stage 2",
-	"ckd3":  "CKD Stage 3",
-	"ckd4":  "CKD Stage 4",
-	"ckd5":  "CKD Stage 5 / ESRD",
-	"esrd":  "End-Stage Renal Disease",
-	"cld":   "Chronic Liver Disease",
-	"nafld": "Non-Alcoholic Fatty Liver Disease",
-	"gerd":  "GERD",
-	"ibs":   "Irritable Bowel Syndrome",
-	"ra":    "Rheumatoid Arthritis",
-	"sle":   "Systemic Lupus Erythematosus",
-	"ms":    "Multiple Sclerosis",
-	"cva":   "Cerebrovascular Accident (Stroke)",
-	"tia":   "Transient Ischaemic Attack",
-	"dvt":   "Deep Vein Thrombosis",
-	"pe":    "Pulmonary Embolism",
-	"cap":   "Community Acquired Pneumonia",
-	"hap":   "Hospital Acquired Pneumonia",
-	"uti":   "Urinary Tract Infection",
-	"urti":  "Upper Respiratory Tract Infection",
-	"lrti":  "Lower Respiratory Tract Infection",
-	"mi":    "Myocardial Infarction",
-	"stemi": "ST-Elevation MI",
-	"nstemi":"Non-ST-Elevation MI",
-	"dka":   "Diabetic Ketoacidosis",
-	"hhs":   "Hyperosmolar Hyperglycaemic State",
-
-	// Symptoms / exam
-	"sob":   "Shortness of Breath",
-	"cp":    "Chest Pain",
-	"abd":   "Abdominal",
-	"lbp":   "Low Back Pain",
-	"ha":    "Headache",
-	"nv":    "Nausea & Vomiting",
-	"loc":   "Loss of Consciousness",
-	"pnd":   "Paroxysmal Nocturnal Dyspnoea",
-	"doe":   "Dyspnoea on Exertion",
-	"jvp":   "Raised JVP",
-	"ams":   "Altered Mental Status",
-
-	// Drug frequency
-	"od":   "Once daily",
-	"bd":   "Twice daily",
-	"tds":  "Three times daily",
-	"qds":  "Four times daily",
-	"prn":  "As needed",
-	"stat": "Immediately",
-	"nocte":"At night",
-	"ac":   "Before meals",
-	"pc":   "After meals",
-
-	// Routes
-	"iv":   "Intravenous",
-	"im":   "Intramuscular",
-	"sc":   "Subcutaneous",
-	"sl":   "Sublingual",
-	"po":   "Oral",
-	"top":  "Topical",
-	"neb":  "Nebulised",
-	"inh":  "Inhaled",
-
-	// Lab abbreviations used in pmh/hpi context
-	"hyperlipidemia": "Hyperlipidaemia",
-	"hyperlipidaemia":"Hyperlipidaemia",
-	"asthma":         "Bronchial Asthma",
-}
+var Abbreviations map[string]string
 
 // ExpandAbbreviations takes a space-separated string (e.g. from pmh or cc)
 // and replaces known abbreviations with their full forms.
 // Unknown words are passed through unchanged.
 func ExpandAbbreviations(input string) string {
+	return ExpandAbbreviationsWithOptions(input, nil, nil)
+}
+
+// ExpandAbbreviationsWithOptions implements ExpandAbbreviations with optional custom config.
+func ExpandAbbreviationsWithOptions(input string, customAbbr map[string]string, customDur map[string]DurationUnit) string {
 	if input == "" {
 		return ""
+	}
+	abbrMap := Abbreviations
+	if customAbbr != nil {
+		abbrMap = customAbbr
 	}
 	words := splitWords(input)
 	out := make([]string, 0, len(words))
 	for _, w := range words {
 		lower := toLower(w)
-		if expanded, ok := Abbreviations[lower]; ok {
+		if expanded, ok := abbrMap[lower]; ok {
 			out = append(out, expanded)
-		} else if isDuration(w) {
-			out = append(out, ExpandDuration(w))
+		} else if isDurationWithOptions(w, customDur) {
+			out = append(out, ExpandDurationWithOptions(w, customDur))
 		} else {
 			out = append(out, w)
 		}
@@ -112,7 +43,16 @@ func ExpandAbbreviations(input string) string {
 
 // ExpandAbbr expands a single token. Used for individual fields.
 func ExpandAbbr(token string) string {
-	if exp, ok := Abbreviations[toLower(token)]; ok {
+	return ExpandAbbrWithOptions(token, nil)
+}
+
+// ExpandAbbrWithOptions expands a single token with custom abbreviations map.
+func ExpandAbbrWithOptions(token string, customAbbr map[string]string) string {
+	abbrMap := Abbreviations
+	if customAbbr != nil {
+		abbrMap = customAbbr
+	}
+	if exp, ok := abbrMap[toLower(token)]; ok {
 		return exp
 	}
 	return token
@@ -185,79 +125,91 @@ func ParseDurationToken(s string) (string, string) {
 }
 
 func IsValidDurationUnit(unit string) bool {
-	switch strings.ToLower(unit) {
-	case "y", "yr", "yrs", "year", "years":
-		return true
-	case "mo", "mos", "m", "month", "months":
-		return true
-	case "w", "wk", "wks", "week", "weeks":
-		return true
-	case "d", "dy", "dys", "day", "days":
-		return true
-	case "h", "hr", "hrs", "hour", "hours":
-		return true
-	case "min", "mins", "minute", "minutes":
-		return true
-	case "s", "sec", "secs", "second", "seconds":
-		return true
+	return IsValidDurationUnitWithOptions(unit, nil)
+}
+
+func IsValidDurationUnitWithOptions(unit string, customDur map[string]DurationUnit) bool {
+	durMap := DefaultConfig.Durations
+	if customDur != nil {
+		durMap = customDur
+	}
+	lower := strings.ToLower(unit)
+	for _, du := range durMap {
+		for _, alias := range du.Aliases {
+			if strings.ToLower(alias) == lower {
+				return true
+			}
+		}
 	}
 	return false
 }
 
 func GetDurationUnitWord(unit string, plural bool) string {
-	var word string
-	switch strings.ToLower(unit) {
-	case "y", "yr", "yrs", "year", "years":
-		word = "year"
-	case "mo", "mos", "m", "month", "months":
-		word = "month"
-	case "w", "wk", "wks", "week", "weeks":
-		word = "week"
-	case "d", "dy", "dys", "day", "days":
-		word = "day"
-	case "h", "hr", "hrs", "hour", "hours":
-		word = "hour"
-	case "min", "mins", "minute", "minutes":
-		word = "minute"
-	case "s", "sec", "secs", "second", "seconds":
-		word = "second"
-	default:
-		return unit
+	return GetDurationUnitWordWithOptions(unit, plural, nil)
+}
+
+func GetDurationUnitWordWithOptions(unit string, plural bool, customDur map[string]DurationUnit) string {
+	durMap := DefaultConfig.Durations
+	if customDur != nil {
+		durMap = customDur
 	}
-	if plural {
-		return word + "s"
+	lower := strings.ToLower(unit)
+	for _, du := range durMap {
+		for _, alias := range du.Aliases {
+			if strings.ToLower(alias) == lower {
+				word := du.Word
+				if plural {
+					return word + "s"
+				}
+				return word
+			}
+		}
 	}
-	return word
+	return unit
 }
 
 func NormalizeDurationUnitShort(unit string) string {
-	switch strings.ToLower(unit) {
-	case "y", "yr", "yrs", "year", "years":
-		return "y"
-	case "mo", "mos", "m", "month", "months":
-		return "mo"
-	case "w", "wk", "wks", "week", "weeks":
-		return "w"
-	case "d", "dy", "dys", "day", "days":
-		return "d"
-	case "h", "hr", "hrs", "hour", "hours":
-		return "h"
-	case "min", "mins", "minute", "minutes":
-		return "min"
-	case "s", "sec", "secs", "second", "seconds":
-		return "s"
+	return NormalizeDurationUnitShortWithOptions(unit, nil)
+}
+
+func NormalizeDurationUnitShortWithOptions(unit string, customDur map[string]DurationUnit) string {
+	durMap := DefaultConfig.Durations
+	if customDur != nil {
+		durMap = customDur
+	}
+	lower := strings.ToLower(unit)
+	for _, du := range durMap {
+		for _, alias := range du.Aliases {
+			if strings.ToLower(alias) == lower {
+				return du.Short
+			}
+		}
 	}
 	return unit
 }
 
 // ExpandDuration converts short duration formats (e.g. 30min, 2w, 1mo, 4h) into full words.
 func ExpandDuration(duration string) string {
+	return ExpandDurationWithOptions(duration, nil)
+}
+
+// ExpandDurationWithOptions converts short duration formats with custom configuration.
+func ExpandDurationWithOptions(duration string, customDur map[string]DurationUnit) string {
 	numStr, unitStr := ParseDurationToken(duration)
-	if numStr == "" || unitStr == "" || !IsValidDurationUnit(unitStr) {
+	if numStr == "" || unitStr == "" || !IsValidDurationUnitWithOptions(unitStr, customDur) {
 		return duration
 	}
 	
 	plural := numStr != "1"
-	word := GetDurationUnitWord(unitStr, plural)
+	word := GetDurationUnitWordWithOptions(unitStr, plural, customDur)
 	return numStr + " " + word
+}
+
+func isDuration(s string) bool {
+	return isDurationWithOptions(s, nil)
+}
+
+func isDurationWithOptions(s string, customDur map[string]DurationUnit) bool {
+	num, unit := ParseDurationToken(s)
+	return num != "" && IsValidDurationUnitWithOptions(unit, customDur)
 }

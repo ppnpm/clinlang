@@ -1,130 +1,86 @@
-# Reference Ranges
+# Reference Ranges & Out-of-Range Markers
 
-ClinLang can annotate numeric values in a note when they fall outside a configured reference band. These annotations are **transcription aids only** — they are not clinical decision support, not severity classifications, and not recommendations. The clinician supplies all clinical interpretation. See [DISCLAIMER.md](../DISCLAIMER.md).
+ClinLang can automatically annotate numeric vitals and lab values in your notes when they fall outside a configured reference range. 
 
-## What you get
+> [!IMPORTANT]
+> **Transcription Aid Only**
+> Out-of-range markers are designed strictly as a transcription aid to help clinicians double-check values. They are **not** clinical decision support, severity indicators, or recommendations. The clinician is always the final authority and must interpret all findings in context.
 
-When markers are enabled, output looks like this:
+---
 
+## What it Looks Like
+
+When markers are enabled, the SOAP note will flag out-of-range values like this:
+
+```text
+Vitals: BP: 160/100 | HR: 105 bpm | SpO2: 94% | Temp: 98.6 | RR: 22 /min
+        - HR 105 bpm (outside ref 60-100, AHA adult defaults)
+        - BP 160/100 mmHg (outside ref 90-140 / 60-90, JNC-8 defaults)
 ```
-HR: 110 bpm  [outside ref 60-100, user-default adult ranges]
-BP: 160/100  [outside ref 90-140 / 60-90, user-default adult ranges]
-```
 
-Each marker carries:
-- the value as it was recorded,
-- the reference range it was compared against,
-- the source that supplied that range (so the clinician can judge whether the source is appropriate).
+In the ClinLang web UI, these markers are highlighted on hover over the vitals or lab lines, and are displayed in the SOAP preview.
 
-There is no severity classification. There is no named clinical condition. The clinician decides what, if anything, to do.
+---
 
-## When markers appear
+## Default Reference Ranges
 
-| Output                              | Markers shown? |
-|-------------------------------------|----------------|
-| `clinlang run <file.cln>`           | yes (always)   |
-| `clinlang lint <file.cln>`          | yes (always)   |
-| `clinlang json <file.cln>`          | yes — in the `range_markers` field of the JSON |
-| `clinlang soap <file.cln>`          | no (default)   |
-| `clinlang soap --markers <file>`    | yes — as a "Notes (out of ref)" subsection inside Objective |
-| `clinlang markdown <file>`          | no (default)   |
-| `clinlang markdown --markers <file>`| yes — as a "Notes (out of ref)" section |
+ClinLang comes with standard adult reference ranges built-in. Below is the list of values checked:
 
-Exports (SOAP, Markdown) default to **off** because exported notes are often shared with others; the clinician opts in when they want annotations included.
+| Field | Key | Default Range | Unit | Source Citation |
+|:---|:---|:---|:---|:---|
+| **Heart Rate** | `vitals.hr` | 60 – 100 | bpm | user-default adult ranges |
+| **Systolic BP** | `vitals.bp.systolic` | 90 – 140 | mmHg | user-default adult ranges |
+| **Diastolic BP** | `vitals.bp.diastolic` | 60 – 90 | mmHg | user-default adult ranges |
+| **Oxygen Saturation** | `vitals.spo2` | 94 – 100 | % | user-default adult ranges |
+| **Respiratory Rate** | `vitals.rr` | 12 – 20 | breaths/min | user-default adult ranges |
+| **Temperature** | `vitals.temp` | 97.0 – 100.0 | °F | user-default adult ranges |
+| **Haemoglobin (Male)** | `labs.hb.M` | 13.0 – 17.0 | g/dL | user-default adult ranges |
+| **Haemoglobin (Female)** | `labs.hb.F` | 11.0 – 17.0 | g/dL | user-default adult ranges |
+| **White Blood Cells** | `labs.wbc` | 4,000 – 11,000 | /µL | user-default adult ranges |
+| **Creatinine** | `labs.creatinine` | 0.6 – 1.2 | mg/dL | user-default adult ranges |
+| **Sodium (Na)** | `labs.na` | 135 – 145 | mEq/L | user-default adult ranges |
+| **Potassium (K)** | `labs.k` | 3.5 – 5.0 | mEq/L | user-default adult ranges |
+| **Glucose** | `labs.glucose` | 3.9 – 7.8 | mmol/L | user-default adult ranges |
 
-## The reference-range file
+---
 
-Default ranges are embedded in the binary at build time from `pkg/engine/reference_ranges.json`. The schema is a flat map of dotted keys to range entries:
+## Customizing Reference Ranges
 
+You can override any default range to match your local laboratory guidelines or hospital policy.
+
+### Editing in the Web UI (Easiest)
+1. Open the **Settings Drawer** (gear icon in top right).
+2. Scroll to the **Shorthand & Terms** section.
+3. Select **`reference_ranges.json`** from the configuration files dropdown.
+4. Modify the values in the JSON text box and click **Save Configuration**.
+
+### Reference Range Schema Format
+Each entry in `reference_ranges.json` looks like this:
 ```json
-{
-  "vitals.hr":           {"low": 60,   "high": 100,  "unit": "bpm",   "source": "user-default adult ranges"},
-  "vitals.bp.systolic":  {"low": 90,   "high": 140,  "unit": "mmHg",  "source": "user-default adult ranges"},
-  "vitals.bp.diastolic": {"low": 60,   "high": 90,   "unit": "mmHg",  "source": "user-default adult ranges"},
-  "vitals.spo2":         {"low": 94,   "high": 100,  "unit": "%",     "source": "user-default adult ranges"},
-  "vitals.temp":         {"low": 97,   "high": 100,  "unit": "F",     "source": "user-default adult ranges"},
-  "vitals.rr":           {"low": 12,   "high": 20,   "unit": "/min",  "source": "user-default adult ranges"},
-  "labs.hb.M":           {"low": 13,   "high": 17,   "unit": "g/dL",  "source": "user-default adult ranges"},
-  "labs.hb.F":           {"low": 11,   "high": 17,   "unit": "g/dL",  "source": "user-default adult ranges"},
-  "labs.wbc":            {"low": 4000, "high": 11000,"unit": "/uL",   "source": "user-default adult ranges"},
-  "labs.creatinine":     {"low": 0.6,  "high": 1.2,  "unit": "mg/dL", "source": "user-default adult ranges"},
-  "labs.na":             {"low": 135,  "high": 145,  "unit": "mEq/L", "source": "user-default adult ranges"},
-  "labs.k":              {"low": 3.5,  "high": 5.0,  "unit": "mEq/L", "source": "user-default adult ranges"},
-  "labs.glucose":        {"low": 3.9,  "high": 7.8,  "unit": "mmol/L","source": "user-default adult ranges"}
+"vitals.hr": {
+  "low": 60,
+  "high": 100,
+  "unit": "bpm",
+  "source": "AHA Adult Defaults"
 }
 ```
+*   **`low`** (number, optional): The lower limit. Values below this are flagged.
+*   **`high`** (number, optional): The upper limit. Values above this are flagged.
+*   **`unit`** (string, optional): A text label showing the unit.
+*   **`source`** (string, required): The citation source shown in the warning. Always name this so you (and other readers) can audit where the range came from (e.g. "Hospital X Lab Guideline 2026").
 
-### Field-by-field
+---
 
-- **Key**: dotted path identifying the field being ranged. The engine looks up these exact keys, so don't rename them unless you are also editing the engine.
-- **`low`** (optional number): lower bound, inclusive. Values below `low` are out of range.
-- **`high`** (optional number): upper bound, inclusive. Values above `high` are out of range.
-- **`unit`** (optional string): the unit the bounds are expressed in. Informational — not used by the engine; the displayed value still carries the unit that the engine recorded from the input.
-- **`source`** (required string): cited next to the marker. Use something the clinician can audit ("hospital X policy 2025", "WHO 2023", "department default").
+## Special Range Rules
 
-A key may have only `low`, only `high`, or both. A key with neither is ignored.
+### 1. Haemoglobin (Sex-Specific)
+Haemoglobin ranges are split into `labs.hb.M` and `labs.hb.F`. 
+*   If a patient is registered as male (`pt 58M`), the system uses `labs.hb.M`.
+*   If a patient is registered as female (`pt 58F`), the system uses `labs.hb.F`.
+*   If you omit the sex in the `pt` line (e.g. `pt 58`), **no Haemoglobin markers will be generated**. The engine does not guess.
 
-### Haemoglobin uses sex-specific keys
-
-`labs.hb.M` is used when the patient sex is `M`. `labs.hb.F` is used when the patient sex is `F`. If sex is unrecorded, **no Hb marker is emitted** — the engine deliberately refuses to guess.
-
-### Blood pressure uses two keys
-
-`vitals.bp.systolic` and `vitals.bp.diastolic` are separate entries. The engine combines them into a single marker per BP reading, with the display `90-140 / 60-90`.
-
-### Temperature requires explicit units; default is Fahrenheit
-
-ClinLang does **not** convert between °F and °C. The clinician chooses the unit and the engine uses it verbatim:
-
-- `vitals temp98.6F` — explicit Fahrenheit
-- `vitals temp37C` — explicit Celsius
-- `vitals temp98.6` — no suffix, defaults to **Fahrenheit**
-
-The `vitals.temp` reference range has a `unit` field. A temperature marker is emitted **only when the recorded unit matches the range's configured unit**. If they don't match, the engine silently skips the check rather than guessing a conversion. To switch to Celsius defaults, override the range and record your temps with `C` suffix:
-
-```json
-{
-  "vitals.temp": {"low": 36, "high": 38, "unit": "C", "source": "your-clinic ranges"}
-}
-```
-
-This explicit-unit rule is deliberate: a software-driven F→C conversion is the kind of "the program decided what your number meant" behaviour that the medicolegal posture of this project avoids.
-
-## Overriding the defaults
-
-There are two ways to use a custom range file.
-
-### 1. Environment variable (recommended)
-
-Set `CLINLANG_REFERENCE_RANGES` to the path of your JSON file:
-
-```bash
-export CLINLANG_REFERENCE_RANGES=/path/to/your/ranges.json
-clinlang run examples/mi.cln
-```
-
-```powershell
-$env:CLINLANG_REFERENCE_RANGES = "C:\path\to\your\ranges.json"
-clinlang run examples/mi.cln
-```
-
-If the file is missing or invalid, the CLI prints a warning to stderr and falls back to the embedded defaults.
-
-### 2. Programmatic (Go library users)
-
-```go
-import "clinlang/pkg/engine"
-
-if err := engine.LoadReferenceRanges("/path/to/your/ranges.json"); err != nil {
-    log.Fatal(err)
-}
-// All subsequent ParseString / ParseFile calls use the override.
-```
-
-The override is process-wide. In hosted deployments where multiple users share one process, per-user range sets will be introduced in a later phase.
-
-## A note on the defaults
-
-The values shipped in `reference_ranges.json` are labelled `"user-default adult ranges"`. They are intended as a **starting point** for a single adult user to override. They are not endorsed by any clinical body, are not jurisdiction-specific, and should be replaced before use in any real workflow. The intent of shipping defaults at all is so the feature works out of the box for demonstration, not so the defaults function as authoritative ranges.
-
-The clinician is the source of truth. ClinLang is the notebook.
+### 2. Temperature (Unit Suffixes)
+ClinLang does **not** perform automatic unit conversion between Fahrenheit (°F) and Celsius (°C). 
+*   If you type your temperature in Celsius (`temp37.5c`), it must match a range configured with `"unit": "C"`.
+*   If you type your temperature in Fahrenheit (`temp98.6f`), it must match a range configured with `"unit": "F"`.
+*   If the units do not match, the range check is skipped. If you want to use Celsius defaults, edit your `reference_ranges.json` to reflect your desired Celsius limits and set `"unit": "C"`.

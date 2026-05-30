@@ -28,7 +28,7 @@ func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 		sb.WriteString(fmt.Sprintf("Context: %s\n", c.Day))
 	}
 	if c.Allergies != "" {
-		sb.WriteString(fmt.Sprintf("\n[!] ALLERGIES: %s [!]\n", strings.ToUpper(displayText(c.Allergies))))
+		sb.WriteString(fmt.Sprintf("\n[!] ALLERGIES: %s [!]\n", strings.ToUpper(displayText(c.Allergies, c))))
 	}
 	sb.WriteString(sep + "\n\n")
 
@@ -37,19 +37,19 @@ func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 	sb.WriteString(strings.Repeat("─", 25) + "\n")
 
 	if c.CC != "" {
-		sb.WriteString(fmt.Sprintf("Chief Complaint: %s\n", displayText(c.CC)))
+		sb.WriteString(fmt.Sprintf("Chief Complaint: %s\n", displayText(c.CC, c)))
 	}
 	if c.HPI != "" {
-		sb.WriteString(fmt.Sprintf("HPI            : %s\n", displayText(c.HPI)))
+		sb.WriteString(fmt.Sprintf("HPI            : %s\n", displayText(c.HPI, c)))
 	}
 	if c.PMH != "" {
-		sb.WriteString(fmt.Sprintf("PMH            : %s\n", displayText(c.PMH)))
+		sb.WriteString(fmt.Sprintf("PMH            : %s\n", displayText(c.PMH, c)))
 	}
 	if c.SH != "" {
-		sb.WriteString(fmt.Sprintf("Social History : %s\n", displayText(c.SH)))
+		sb.WriteString(fmt.Sprintf("Social History : %s\n", displayText(c.SH, c)))
 	}
 	if c.FH != "" {
-		sb.WriteString(fmt.Sprintf("Family History : %s\n", displayText(c.FH)))
+		sb.WriteString(fmt.Sprintf("Family History : %s\n", displayText(c.FH, c)))
 	}
 
 	// Symptoms listed under subjective
@@ -57,7 +57,7 @@ func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 		sb.WriteString("Symptoms       : ")
 		symParts := []string{}
 		for _, s := range c.Symptoms {
-			part := displayText(s.Name)
+			part := displayText(s.Name, c)
 			if s.Intensity != "" {
 				part += " (" + s.Intensity
 				if s.Duration != "" {
@@ -81,7 +81,10 @@ func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 	sb.WriteString(fmt.Sprintf("Vitals         : %s\n", FormatVitals(c.Vitals)))
 
 	if c.PE != "" {
-		sb.WriteString(fmt.Sprintf("Physical Exam  : %s\n", displayText(c.PE)))
+		sb.WriteString(fmt.Sprintf("Physical Exam  : %s\n", displayText(c.PE, c)))
+	}
+	if len(c.Images) > 0 {
+		sb.WriteString(fmt.Sprintf("Images/Attach  : %s\n", strings.Join(c.Images, ", ")))
 	}
 
 	if len(c.Imaging) > 0 {
@@ -165,13 +168,13 @@ func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 	sb.WriteString(strings.Repeat("─", 25) + "\n")
 
 	if c.DX != "" {
-		sb.WriteString(fmt.Sprintf("Diagnosis      : %s\n", displayText(c.DX)))
+		sb.WriteString(fmt.Sprintf("Diagnosis      : %s\n", displayText(c.DX, c)))
 	} else {
 		sb.WriteString("Diagnosis      : [Pending]\n")
 	}
 
 	if c.DDX != "" {
-		sb.WriteString(fmt.Sprintf("Differential   : %s\n", displayText(c.DDX)))
+		sb.WriteString(fmt.Sprintf("Differential   : %s\n", displayText(c.DDX, c)))
 	}
 
 	sb.WriteString("\n")
@@ -187,24 +190,22 @@ func FormatSOAPWithOptions(c ClinicalCase, opts FormatOptions) string {
 				line += " " + p.Dose
 			}
 			
-			routeStr := p.Route
-			if expanded, ok := expandedRoutes[routeStr]; ok {
-				routeStr = expanded
-			}
+			routeStr := getRouteExpansion(p.Route, c.Config)
 			if routeStr != "" {
 				line += " " + routeStr
 			}
 
-			freqStr := p.Frequency
-			if expanded, ok := expandedFrequencies[freqStr]; ok {
-				freqStr = expanded
-			}
+			freqStr := getFrequencyExpansion(p.Frequency, c.Config)
 			if freqStr != "" {
 				line += ", " + freqStr
 			}
 			
 			if p.Duration != "" {
-				line += " for " + ExpandDuration(p.Duration)
+				var customDur map[string]DurationUnit
+				if c.Config != nil {
+					customDur = c.Config.Durations
+				}
+				line += " for " + ExpandDurationWithOptions(p.Duration, customDur)
 			}
 			sb.WriteString(line + "\n")
 		}

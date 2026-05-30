@@ -6,12 +6,13 @@ import "net/http"
 // The routes here are mounted under /api/v1/ by the parent server.
 func registerProtectedRoutes(mux *http.ServeMux, cfg Config, ws *workspaceState) {
 	// Parsing / formatting endpoints (handlers_parse.go)
-	mux.HandleFunc("/api/v1/parse", handleParse)
-	mux.HandleFunc("/api/v1/note", handleNote)
-	mux.HandleFunc("/api/v1/soap", handleSOAP)
-	mux.HandleFunc("/api/v1/markdown", handleMarkdown)
-	mux.HandleFunc("/api/v1/lint", handleLint)
-	mux.HandleFunc("/api/v1/validate", handleValidateDeprecated)
+	ph := &parseHandler{cfg: cfg, ws: ws}
+	mux.HandleFunc("/api/v1/parse", ph.handleParse)
+	mux.HandleFunc("/api/v1/note", ph.handleNote)
+	mux.HandleFunc("/api/v1/soap", ph.handleSOAP)
+	mux.HandleFunc("/api/v1/markdown", ph.handleMarkdown)
+	mux.HandleFunc("/api/v1/lint", ph.handleLint)
+	mux.HandleFunc("/api/v1/validate", ph.handleValidateDeprecated)
 
 	// Metadata / completion endpoints (handlers_meta.go)
 	mux.HandleFunc("/api/v1/autocomplete", handleAutocomplete)
@@ -27,4 +28,8 @@ func registerProtectedRoutes(mux *http.ServeMux, cfg Config, ws *workspaceState)
 	fh := &filesHandler{cfg: cfg, ws: ws}
 	mux.Handle("/api/v1/files", http.HandlerFunc(fh.handleRoot))
 	mux.Handle("/api/v1/files/", http.HandlerFunc(fh.handleSubpath))
+
+	// Config endpoints (handlers_config.go)
+	ch := &configHandler{cfg: cfg, ws: ws}
+	mux.HandleFunc("/api/v1/config/", ch.handle)
 }

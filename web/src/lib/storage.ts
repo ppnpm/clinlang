@@ -15,6 +15,11 @@ export interface SessionSnapshot {
   sidebarOpen: boolean;
   previewOpen: boolean;
   markersOn: boolean;
+  autosaveOn?: boolean;
+  fontSize?: 'sm' | 'md' | 'lg' | 'xl';
+  editorFont?: 'mono' | 'atkinson' | 'dyslexic' | 'sans';
+  lineSpacing?: 'normal' | 'relaxed' | 'double';
+  highContrastFocus?: boolean;
 }
 
 export function loadSession(workspacePath: string): SessionSnapshot | null {

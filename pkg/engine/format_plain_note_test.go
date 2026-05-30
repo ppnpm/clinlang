@@ -3,6 +3,7 @@ package engine
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,9 +53,11 @@ func TestFormatPlainNote_Golden(t *testing.T) {
 			if err != nil {
 				t.Fatalf("read golden %s: %v (run with UPDATE_GOLDEN=1 to create)", goldenPath, err)
 			}
-			if got != string(want) {
+			// Normalize carriage returns for Windows compatibility
+			wantStr := strings.ReplaceAll(string(want), "\r\n", "\n")
+			if got != wantStr {
 				t.Errorf("output mismatch for %s\n--- want ---\n%s\n--- got ---\n%s",
-					name, string(want), got)
+					name, wantStr, got)
 			}
 		})
 	}

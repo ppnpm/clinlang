@@ -1,0 +1,37 @@
+{
+  "y": {
+    "aliases": ["y", "yr", "yrs", "year", "years"],
+    "word": "year",
+    "short": "y"
+  },
+  "mo": {
+    "aliases": ["mo", "mos", "m", "month", "months"],
+    "word": "month",
+    "short": "mo"
+  },
+  "w": {
+    "aliases": ["w", "wk", "wks", "week", "weeks"],
+    "word": "week",
+    "short": "w"
+  },
+  "d": {
+    "aliases": ["d", "dy", "dys", "day", "days"],
+    "word": "day",
+    "short": "d"
+  },
+  "h": {
+    "aliases": ["h", "hr", "hrs", "hour", "hours"],
+    "word": "hour",
+    "short": "h"
+  },
+  "min": {
+    "aliases": ["min", "mins", "minute", "minutes"],
+    "word": "minute",
+    "short": "min"
+  },
+  "s": {
+    "aliases": ["s", "sec", "secs", "second", "seconds"],
+    "word": "second",
+    "short": "s"
+  }
+}

@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -17,11 +18,17 @@ type FormatOptions struct {
 // human-friendly display. The parser deliberately stores user input
 // verbatim; expansion is applied here at format time only. Empty input
 // returns empty output.
-func displayText(s string) string {
+func displayText(s string, c ClinicalCase) string {
 	if s == "" {
 		return ""
 	}
-	return ExpandAbbreviations(s)
+	var customAbbr map[string]string
+	var customDur map[string]DurationUnit
+	if c.Config != nil {
+		customAbbr = c.Config.Abbreviations
+		customDur = c.Config.Durations
+	}
+	return ExpandAbbreviationsWithOptions(s, customAbbr, customDur)
 }
 
 // FormatJSON produces a standard JSON representation of the ClinicalCase.
@@ -71,9 +78,9 @@ func FormatPlainNote(c ClinicalCase) string {
 	writeLine(patLine)
 	writeLine(sep)
 
-	writeField("Chief Complaint", displayText(c.CC))
-	writeField("HPI", displayText(c.HPI))
-	writeField("Past Medical History", displayText(c.PMH))
+	writeField("Chief Complaint", displayText(c.CC, c))
+	writeField("HPI", displayText(c.HPI, c))
+	writeField("Past Medical History", displayText(c.PMH, c))
 
 	writeLine(fmt.Sprintf("Vitals : %s", FormatVitals(c.Vitals)))
 
@@ -94,7 +101,7 @@ func FormatPlainNote(c ClinicalCase) string {
 			if s.Duration != "" {
 				dur = " × " + s.Duration
 			}
-			writeLine(fmt.Sprintf("  ▸ %-20s [%s%s]", displayText(s.Name), label, dur))
+			writeLine(fmt.Sprintf("  ▸ %-20s [%s%s]", displayText(s.Name, c), label, dur))
 		}
 	}
 
@@ -127,11 +134,19 @@ func FormatPlainNote(c ClinicalCase) string {
 
 	if len(c.Prescriptions) > 0 {
 		writeLine(sep)
-		sb.WriteString(FormatPrescriptions(c.Prescriptions))
+		sb.WriteString(FormatPrescriptions(c))
+	}
+
+	if len(c.Images) > 0 {
+		writeLine(sep)
+		writeLine("Images:")
+		for _, img := range c.Images {
+			writeLine("  ▸ " + img)
+		}
 	}
 
 	writeLine(sep)
-	writeField("Diagnosis", displayText(c.DX))
+	writeField("Diagnosis", displayText(c.DX, c))
 	writeLine(sep)
 
 	if len(c.Warnings) > 0 {
@@ -165,26 +180,26 @@ func FormatMarkdownWithOptions(c ClinicalCase, opts FormatOptions) string {
 		sb.WriteString(fmt.Sprintf("- **Timeline**: %s\n", c.Day))
 	}
 	if c.Allergies != "" {
-		sb.WriteString(fmt.Sprintf("- **Allergies**: %s\n", displayText(c.Allergies)))
+		sb.WriteString(fmt.Sprintf("- **Allergies**: %s\n", displayText(c.Allergies, c)))
 	}
 	sb.WriteString("\n")
 
 	// Subjective
 	sb.WriteString("## Subjective\n")
 	if c.CC != "" {
-		sb.WriteString(fmt.Sprintf("- **Chief Complaint**: %s\n", displayText(c.CC)))
+		sb.WriteString(fmt.Sprintf("- **Chief Complaint**: %s\n", displayText(c.CC, c)))
 	}
 	if c.HPI != "" {
-		sb.WriteString(fmt.Sprintf("- **HPI**: %s\n", displayText(c.HPI)))
+		sb.WriteString(fmt.Sprintf("- **HPI**: %s\n", displayText(c.HPI, c)))
 	}
 	if c.PMH != "" {
-		sb.WriteString(fmt.Sprintf("- **PMH**: %s\n", displayText(c.PMH)))
+		sb.WriteString(fmt.Sprintf("- **PMH**: %s\n", displayText(c.PMH, c)))
 	}
 
 	if len(c.Symptoms) > 0 {
 		sb.WriteString("- **Active Symptoms**:\n")
 		for _, s := range c.Symptoms {
-			sb.WriteString(fmt.Sprintf("  - %s", displayText(s.Name)))
+			sb.WriteString(fmt.Sprintf("  - %s", displayText(s.Name, c)))
 			if s.Intensity != "" || s.Duration != "" {
 				sb.WriteString(" (")
 				parts := []string{}
@@ -202,7 +217,7 @@ func FormatMarkdownWithOptions(c ClinicalCase, opts FormatOptions) string {
 	sb.WriteString("## Objective\n")
 	sb.WriteString(fmt.Sprintf("- **Vital Signs**: %s\n", FormatVitals(c.Vitals)))
 	if c.PE != "" {
-		sb.WriteString(fmt.Sprintf("- **Examination**: %s\n", displayText(c.PE)))
+		sb.WriteString(fmt.Sprintf("- **Examination**: %s\n", displayText(c.PE, c)))
 	}
 	
 	if len(c.Labs) > 0 {
@@ -226,11 +241,11 @@ func FormatMarkdownWithOptions(c ClinicalCase, opts FormatOptions) string {
 
 	// Assessment
 	sb.WriteString("## Assessment\n")
-	diag := displayText(c.DX)
+	diag := displayText(c.DX, c)
 	if diag == "" { diag = "TBD" }
 	sb.WriteString(fmt.Sprintf("- **Diagnosis**: %s\n", diag))
 	if c.DDX != "" {
-		sb.WriteString(fmt.Sprintf("- **Differentials**: %s\n", displayText(c.DDX)))
+		sb.WriteString(fmt.Sprintf("- **Differentials**: %s\n", displayText(c.DDX, c)))
 	}
 	sb.WriteString("\n")
 
@@ -239,11 +254,39 @@ func FormatMarkdownWithOptions(c ClinicalCase, opts FormatOptions) string {
 	if len(c.Prescriptions) > 0 {
 		sb.WriteString("### Prescriptions\n")
 		for _, p := range c.Prescriptions {
-			sb.WriteString(fmt.Sprintf("- **%s** %s %s, %s for %s\n", 
-				titleCase(p.Drug), p.Dose, p.Route, p.Frequency, ExpandDuration(p.Duration)))
+			line := fmt.Sprintf("- **%s**", titleCase(p.Drug))
+			if p.Dose != "" {
+				line += " " + p.Dose
+			}
+			
+			routeStr := getRouteExpansion(p.Route, c.Config)
+			if routeStr != "" {
+				line += " " + routeStr
+			}
+
+			freqStr := getFrequencyExpansion(p.Frequency, c.Config)
+			if freqStr != "" {
+				line += ", " + freqStr
+			}
+
+			if p.Duration != "" {
+				var customDur map[string]DurationUnit
+				if c.Config != nil {
+					customDur = c.Config.Durations
+				}
+				line += " for " + ExpandDurationWithOptions(p.Duration, customDur)
+			}
+			sb.WriteString(line + "\n")
 		}
 	} else {
 		sb.WriteString("*No prescriptions documented.*\n")
+	}
+
+	if len(c.Images) > 0 {
+		sb.WriteString("\n## Attachments & Images\n")
+		for _, img := range c.Images {
+			sb.WriteString(fmt.Sprintf("![%s](/api/v1/files/%s?raw=true)\n", filepath.Base(img), img))
+		}
 	}
 
 	sb.WriteString("\n---\n")

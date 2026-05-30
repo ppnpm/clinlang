@@ -53,3 +53,15 @@ func TestFormatMarkdown_MarkersOptIn(t *testing.T) {
 		t.Errorf("opt-in FormatMarkdown must include marker section; got:\n%s", out)
 	}
 }
+
+func TestFormatMarkdown_PrescriptionMissingFields(t *testing.T) {
+	c := ParseString("rx metoprolol 25mg\nrx aspirin po")
+	out := FormatMarkdown(c)
+
+	if !strings.Contains(out, "- **Metoprolol** 25mg\n") {
+		t.Errorf("Expected Metoprolol to be formatted as '- **Metoprolol** 25mg', got:\n%s", out)
+	}
+	if !strings.Contains(out, "- **Aspirin** Orally\n") {
+		t.Errorf("Expected Aspirin to be formatted as '- **Aspirin** Orally', got:\n%s", out)
+	}
+}

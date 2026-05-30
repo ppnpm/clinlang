@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"clinlang/pkg/auth"
 	"clinlang/pkg/engine"
 )
 
@@ -49,24 +52,96 @@ func readParseRequest(r *http.Request) (parseRequest, error) {
 	return req, nil
 }
 
-// handleParse returns the full parsed ClinicalCase as JSON.
-func handleParse(w http.ResponseWriter, r *http.Request) {
-	req, err := readParseRequest(r)
-	if err != nil {
-		writeError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	writeJSON(w, http.StatusOK, engine.ParseString(req.Input))
+type parseHandler struct {
+	cfg Config
+	ws  *workspaceState
 }
 
-// handleNote returns the canonical plain-text clinical note.
-func handleNote(w http.ResponseWriter, r *http.Request) {
+func (h *parseHandler) getParserConfigAndRanges(user string) (*engine.ParserConfig, engine.ReferenceRanges) {
+	cfg := engine.DefaultConfig
+	ranges := engine.DefaultReferenceRanges()
+
+	root := h.ws.Get()
+	if root == "" {
+		return &cfg, ranges
+	}
+
+	if h.cfg.Mode == ModeHosted {
+		clean := filepath.Clean("/" + user)
+		root = filepath.Join(root, clean)
+	}
+	configDir := filepath.Join(root, ".config")
+
+	loadJSON := func(filename string, dest interface{}) bool {
+		p := filepath.Join(configDir, filename)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return false
+		}
+		if err := json.Unmarshal(data, dest); err == nil {
+			return true
+		}
+		return false
+	}
+
+	var customAbbr map[string]string
+	if loadJSON("abbreviations.json", &customAbbr) {
+		cfg.Abbreviations = customAbbr
+	}
+	var customFreq engine.FrequencyConfig
+	if loadJSON("frequencies.json", &customFreq) {
+		cfg.Frequencies = customFreq
+	}
+	var customRoutes engine.RouteConfig
+	if loadJSON("routes.json", &customRoutes) {
+		cfg.Routes = customRoutes
+	}
+	var customSymptoms map[string]string
+	if loadJSON("symptoms.json", &customSymptoms) {
+		cfg.Symptoms = customSymptoms
+	}
+	var customRadKeys []string
+	if loadJSON("rad_keys.json", &customRadKeys) {
+		cfg.RadKeys = customRadKeys
+	}
+	var customDur map[string]engine.DurationUnit
+	if loadJSON("durations.json", &customDur) {
+		cfg.Durations = customDur
+	}
+	var customDrugs []string
+	if loadJSON("drugs.json", &customDrugs) {
+		cfg.Drugs = customDrugs
+	}
+	var customRanges engine.ReferenceRanges
+	if loadJSON("reference_ranges.json", &customRanges) {
+		ranges = customRanges
+	}
+
+	return &cfg, ranges
+}
+
+// handleParse returns the full parsed ClinicalCase as JSON.
+func (h *parseHandler) handleParse(w http.ResponseWriter, r *http.Request) {
 	req, err := readParseRequest(r)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	c := engine.ParseString(req.Input)
+	user := auth.UserFromContext(r.Context())
+	parserCfg, ranges := h.getParserConfigAndRanges(user)
+	writeJSON(w, http.StatusOK, engine.ParseStringWithOptions(req.Input, parserCfg, ranges))
+}
+
+// handleNote returns the provisional plain-text clinical note.
+func (h *parseHandler) handleNote(w http.ResponseWriter, r *http.Request) {
+	req, err := readParseRequest(r)
+	if err != nil {
+		writeError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	user := auth.UserFromContext(r.Context())
+	parserCfg, ranges := h.getParserConfigAndRanges(user)
+	c := engine.ParseStringWithOptions(req.Input, parserCfg, ranges)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"note":          engine.FormatPlainNote(c),
 		"warnings":      c.Warnings,
@@ -77,46 +152,54 @@ func handleNote(w http.ResponseWriter, r *http.Request) {
 // handleSOAP returns a SOAP-formatted note. The optional "markers"
 // field in the request body toggles the "Notes (out of ref)" section;
 // default off.
-func handleSOAP(w http.ResponseWriter, r *http.Request) {
+func (h *parseHandler) handleSOAP(w http.ResponseWriter, r *http.Request) {
 	req, err := readParseRequest(r)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	c := engine.ParseString(req.Input)
+	user := auth.UserFromContext(r.Context())
+	parserCfg, ranges := h.getParserConfigAndRanges(user)
+	c := engine.ParseStringWithOptions(req.Input, parserCfg, ranges)
 	out := engine.FormatSOAPWithOptions(c, engine.FormatOptions{ShowRangeMarkers: req.Markers})
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"soap":          out,
 		"warnings":      c.Warnings,
 		"range_markers": c.RangeMarkers,
+		"images":        c.Images,
 	})
 }
 
 // handleMarkdown returns a markdown-formatted note. "markers" toggle
 // follows the same rule as /soap.
-func handleMarkdown(w http.ResponseWriter, r *http.Request) {
+func (h *parseHandler) handleMarkdown(w http.ResponseWriter, r *http.Request) {
 	req, err := readParseRequest(r)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	c := engine.ParseString(req.Input)
+	user := auth.UserFromContext(r.Context())
+	parserCfg, ranges := h.getParserConfigAndRanges(user)
+	c := engine.ParseStringWithOptions(req.Input, parserCfg, ranges)
 	out := engine.FormatMarkdownWithOptions(c, engine.FormatOptions{ShowRangeMarkers: req.Markers})
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"markdown":      out,
 		"warnings":      c.Warnings,
 		"range_markers": c.RangeMarkers,
+		"images":        c.Images,
 	})
 }
 
 // handleLint returns parser warnings and out-of-range markers only.
-func handleLint(w http.ResponseWriter, r *http.Request) {
+func (h *parseHandler) handleLint(w http.ResponseWriter, r *http.Request) {
 	req, err := readParseRequest(r)
 	if err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	c := engine.ParseString(req.Input)
+	user := auth.UserFromContext(r.Context())
+	parserCfg, ranges := h.getParserConfigAndRanges(user)
+	c := engine.ParseStringWithOptions(req.Input, parserCfg, ranges)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"warnings":      c.Warnings,
 		"range_markers": c.RangeMarkers,
@@ -126,9 +209,9 @@ func handleLint(w http.ResponseWriter, r *http.Request) {
 // handleValidateDeprecated proxies to handleLint and emits an HTTP
 // Deprecation header. Will be removed in a future release; callers
 // should migrate to /api/v1/lint.
-func handleValidateDeprecated(w http.ResponseWriter, r *http.Request) {
+func (h *parseHandler) handleValidateDeprecated(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Deprecation", "true")
 	w.Header().Set("Sunset", "future")
 	w.Header().Set("Link", `</api/v1/lint>; rel="successor-version"`)
-	handleLint(w, r)
+	h.handleLint(w, r)
 }

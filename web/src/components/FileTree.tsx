@@ -28,6 +28,7 @@ import {
   FolderPlus,
   RefreshCw,
   Trash2,
+  MoreVertical,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -111,6 +112,7 @@ function TreeNode({
   const newFileAt = useStore((s) => s.newFileAt);
 
   const isActive = activePath === entry.path;
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // dnd-kit hooks. Each node is both draggable (you can move it) and,
   // if it's a folder, a drop target. The workspace root is its own
@@ -159,7 +161,7 @@ function TreeNode({
                 droppable.setNodeRef(el);
               }}
               className={cn(
-                'rounded-sm',
+                'rounded-sm relative group flex items-center justify-between',
                 droppable.isOver &&
                   'ring-1 ring-inset ring-foreground/40 bg-accent/30'
               )}
@@ -169,7 +171,7 @@ function TreeNode({
                 {...draggable.listeners}
                 data-tree-item={entry.path}
                 data-tree-is-dir="true"
-                className="group flex w-full items-center gap-1 rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:bg-accent/70"
+                className="group flex flex-1 items-center gap-1 rounded-sm px-2 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:bg-accent/70"
                 style={{ paddingLeft: `${depth * 12 + 6}px` }}
                 onClick={() => onToggleExpand(entry.path)}
               >
@@ -185,6 +187,70 @@ function TreeNode({
                 )}
                 <span className="truncate">{entry.name}</span>
               </button>
+
+              {/* Mobile options dropdown */}
+              <div className="relative pr-1 flex items-center shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(!menuOpen);
+                  }}
+                  className="opacity-100 md:opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded-sm text-muted-foreground hover:text-foreground transition-all focus:opacity-100"
+                  aria-label="More actions"
+                  title="More actions"
+                >
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </button>
+
+                {menuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 bg-transparent"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpen(false);
+                      }}
+                    />
+                    <div className="absolute right-0 top-full mt-0.5 z-50 w-36 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          void newFileAt(entry.path);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <Plus className="h-3 w-3" />
+                        New file
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          onRequestRename({ path: entry.path, isDir: true });
+                        }}
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Rename
+                      </button>
+                      <hr className="my-1 border-border" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpen(false);
+                          onRequestDelete(entry.path);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent>
@@ -234,7 +300,7 @@ function TreeNode({
           ref={draggable.setNodeRef}
           style={dragStyle}
           className={cn(
-            'group flex w-full items-center gap-1 rounded-sm pr-1 text-sm',
+            'group flex w-full items-center justify-between rounded-sm pr-1 text-sm relative',
             isActive
               ? 'bg-accent text-accent-foreground'
               : 'hover:bg-accent/60 hover:text-accent-foreground',
@@ -254,6 +320,81 @@ function TreeNode({
             <File className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">{entry.name}</span>
           </button>
+
+          {/* Mobile options dropdown */}
+          <div className="relative pr-1 flex items-center shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              className="opacity-100 md:opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded-sm text-muted-foreground hover:text-foreground transition-all focus:opacity-100"
+              aria-label="More actions"
+              title="More actions"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </button>
+
+            {menuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                  }}
+                />
+                <div className="absolute right-0 top-full mt-0.5 z-50 w-36 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      void onOpen();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <File className="h-3 w-3" />
+                    Open
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onRequestRename({ path: entry.path, isDir: false });
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Rename
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      void onDuplicate();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplicate
+                  </button>
+                  <hr className="my-1 border-border" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onRequestDelete(entry.path);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>

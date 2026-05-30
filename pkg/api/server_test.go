@@ -171,3 +171,77 @@ func TestCORS_HostedNoHeaders(t *testing.T) {
 		t.Errorf("hosted mode should not emit CORS headers, got %q", got)
 	}
 }
+
+func TestConfig_Endpoints(t *testing.T) {
+	ts := newLocalServer(t)
+
+	// 1. GET abbreviations.json default
+	resp, err := http.Get(ts.URL + "/api/v1/config/abbreviations.json")
+	if err != nil {
+		t.Fatalf("GET configuration: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected 200, got %d", resp.StatusCode)
+	}
+	var data map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		t.Fatalf("Failed to decode JSON: %v", err)
+	}
+	if data["dm2"] != "Type 2 Diabetes Mellitus" {
+		t.Errorf("Expected default dm2 abbreviation, got %q", data["dm2"])
+	}
+
+	// 2. PUT overrides
+	data["aki"] = "Acute Kidney Injury"
+	b, _ := json.Marshal(data)
+	req, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/config/abbreviations.json", bytes.NewReader(b))
+	req.Header.Set("Content-Type", "application/json")
+	respPut, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT configuration: %v", err)
+	}
+	defer respPut.Body.Close()
+	if respPut.StatusCode != 200 {
+		t.Errorf("Expected 200, got %d", respPut.StatusCode)
+	}
+
+	// 3. GET abbreviations.json again and check for custom one
+	resp2, err := http.Get(ts.URL + "/api/v1/config/abbreviations.json")
+	if err != nil {
+		t.Fatalf("GET configuration again: %v", err)
+	}
+	defer resp2.Body.Close()
+	var data2 map[string]string
+	_ = json.NewDecoder(resp2.Body).Decode(&data2)
+	if data2["aki"] != "Acute Kidney Injury" {
+		t.Errorf("Expected custom aki abbreviation, got %q", data2["aki"])
+	}
+
+	// 4. Test note output with custom abbreviation
+	respParse := mustPostJSON(t, ts.URL+"/api/v1/note", map[string]string{"input": "pmh aki"}, nil)
+	defer respParse.Body.Close()
+	var parseResp struct {
+		Note string `json:"note"`
+	}
+	_ = json.NewDecoder(respParse.Body).Decode(&parseResp)
+	if !strings.Contains(parseResp.Note, "Acute Kidney Injury") {
+		t.Errorf("Expected formatted note to contain expanded 'Acute Kidney Injury', got:\n%s", parseResp.Note)
+	}
+
+	// 5. Test invalid JSON syntax
+	reqInvalid, _ := http.NewRequest(http.MethodPut, ts.URL+"/api/v1/config/abbreviations.json", strings.NewReader("{invalid-json}"))
+	respInvalid, _ := http.DefaultClient.Do(reqInvalid)
+	defer respInvalid.Body.Close()
+	if respInvalid.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected 400 Bad Request for invalid JSON, got %d", respInvalid.StatusCode)
+	}
+
+	// 6. Test directory traversal protection
+	reqTraversal, _ := http.NewRequest(http.MethodGet, ts.URL + "/api/v1/config/..%2f..%2fetc%2fpasswd", nil)
+	respTraversal, _ := http.DefaultClient.Do(reqTraversal)
+	defer respTraversal.Body.Close()
+	if respTraversal.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected 400 Bad Request for traversal attempt, got %d", respTraversal.StatusCode)
+	}
+}

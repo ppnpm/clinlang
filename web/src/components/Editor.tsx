@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
+import { toast } from 'sonner';
 
 import { useTheme } from '@/components/theme-provider';
 import { clnExtensions } from '@/lib/cln-language';
@@ -11,6 +12,7 @@ import {
   setRangeMarkers,
 } from '@/lib/cln-range-tooltips';
 import type { RangeMarker } from '@/lib/types';
+import { api } from '@/lib/api';
 
 export interface EditorProps {
   value: string;
@@ -55,12 +57,15 @@ export function Editor({ value, onChange, filePath, rangeMarkers }: EditorProps)
     () => [
       EditorView.lineWrapping,
       EditorView.theme({
-        '&': { height: '100%', fontSize: '14px' },
+        '&': { height: '100%', fontSize: 'var(--editor-font-size, 14px)' },
         '.cm-content': {
           padding: '12px 16px',
-          fontFamily:
-            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontFamily: 'var(--editor-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace)',
           caretColor: 'hsl(var(--foreground))',
+          lineHeight: 'var(--editor-line-spacing, 1.45)',
+        },
+        '.cm-line': {
+          lineHeight: 'var(--editor-line-spacing, 1.45)',
         },
         '.cm-focused': { outline: 'none' },
         '.cm-gutters': {
@@ -89,26 +94,74 @@ export function Editor({ value, onChange, filePath, rangeMarkers }: EditorProps)
     [filePath]
   );
 
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    e.preventDefault();
+
+    const toastId = toast.loading('Uploading image...');
+    try {
+      for (const file of imageFiles) {
+        const arrayBuffer = await file.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const filename = file.name.replace(/\s+/g, '_');
+        const timestamp = Date.now();
+        const path = `images/${timestamp}-${filename}`;
+
+        await api.writeBinaryFile(path, data);
+
+        const view = cmRef.current?.view;
+        if (view) {
+          const coords = view.posAtCoords({ x: e.clientX, y: e.clientY });
+          const pos = coords !== null ? coords : view.state.selection.main.from;
+          const insertText = `\nimg ${path}\n`;
+          view.dispatch({
+            changes: { from: pos, to: pos, insert: insertText },
+            selection: { anchor: pos + insertText.length }
+          });
+        }
+      }
+      toast.success('Uploaded successfully', { id: toastId });
+    } catch (err) {
+      console.error('Failed to upload image:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to upload image', { id: toastId });
+    }
+  };
+
   return (
-    <CodeMirror
-      ref={cmRef}
-      value={value}
-      onChange={onChange}
-      theme={isDark ? 'dark' : 'light'}
-      extensions={extensions}
-      basicSetup={{
-        lineNumbers: false,
-        foldGutter: false,
-        highlightActiveLine: true,
-        highlightActiveLineGutter: false,
-        bracketMatching: true,
-        autocompletion: true,
-        searchKeymap: true,
-        indentOnInput: false,
-        defaultKeymap: true,
-        history: true,
-      }}
+    <div
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       className="h-full"
-    />
+    >
+      <CodeMirror
+        ref={cmRef}
+        value={value}
+        onChange={onChange}
+        theme={isDark ? 'dark' : 'light'}
+        extensions={extensions}
+        basicSetup={{
+          lineNumbers: false,
+          foldGutter: false,
+          highlightActiveLine: true,
+          highlightActiveLineGutter: false,
+          bracketMatching: true,
+          autocompletion: true,
+          searchKeymap: true,
+          indentOnInput: false,
+          defaultKeymap: true,
+          history: true,
+        }}
+        className="h-full"
+      />
+    </div>
   );
 }

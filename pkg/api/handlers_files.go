@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -149,6 +150,29 @@ func (h *filesHandler) handleSubpath(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
+		if r.URL.Query().Get("raw") == "true" {
+			data, err := fs.LoadBinaryFile(rel)
+			if err != nil {
+				writeError(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			contentType := "application/octet-stream"
+			lowerRel := strings.ToLower(rel)
+			if strings.HasSuffix(lowerRel, ".png") {
+				contentType = "image/png"
+			} else if strings.HasSuffix(lowerRel, ".jpg") || strings.HasSuffix(lowerRel, ".jpeg") {
+				contentType = "image/jpeg"
+			} else if strings.HasSuffix(lowerRel, ".gif") {
+				contentType = "image/gif"
+			} else if strings.HasSuffix(lowerRel, ".svg") {
+				contentType = "image/svg+xml"
+			}
+			w.Header().Set("Content-Type", contentType)
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(data)))
+			_, _ = w.Write(data)
+			return
+		}
+
 		content, err := fs.LoadFile(rel)
 		if err != nil {
 			writeError(w, err.Error(), http.StatusNotFound)
@@ -163,6 +187,27 @@ func (h *filesHandler) handleSubpath(w http.ResponseWriter, r *http.Request) {
 		})
 
 	case http.MethodPut:
+		contentType := r.Header.Get("Content-Type")
+		if !strings.Contains(contentType, "application/json") {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				writeError(w, "could not read request body", http.StatusBadRequest)
+				return
+			}
+			defer r.Body.Close()
+			if err := fs.SaveBinaryFile(rel, body); err != nil {
+				writeError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			etag := etagFor(string(body))
+			w.Header().Set("ETag", etag)
+			writeJSON(w, http.StatusOK, map[string]string{
+				"path": rel,
+				"etag": etag,
+			})
+			return
+		}
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			writeError(w, "could not read request body", http.StatusBadRequest)

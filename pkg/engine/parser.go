@@ -86,6 +86,16 @@ var coreCommands = map[string]ParserFunc{
 	"ix": func(tokens []string, c *ClinicalCase) {
 		ParseIx(tokens, c)
 	},
+	"img": func(tokens []string, c *ClinicalCase) {
+		if len(tokens) > 0 {
+			c.Images = append(c.Images, strings.Join(tokens, " "))
+		}
+	},
+	"image": func(tokens []string, c *ClinicalCase) {
+		if len(tokens) > 0 {
+			c.Images = append(c.Images, strings.Join(tokens, " "))
+		}
+	},
 
 	"id": func(tokens []string, c *ClinicalCase) {
 		if len(tokens) > 0 {
@@ -114,7 +124,17 @@ func GetCoreCommandNames() []string {
 // It never reads from disk — the caller passes the string content.
 
 func ParseString(input string) ClinicalCase {
+	return ParseStringWithOptions(input, nil, nil)
+}
+
+func ParseStringWithOptions(input string, cfg *ParserConfig, ranges ReferenceRanges) ClinicalCase {
 	c := NewClinicalCase()
+	if cfg != nil {
+		c.Config = cfg
+	}
+	if ranges != nil {
+		c.CustomRanges = ranges
+	}
 	c.Profile = "general"
 	var pluginDataStore map[string]any
 

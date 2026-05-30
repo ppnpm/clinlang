@@ -2,10 +2,86 @@ package engine
 
 import (
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
 )
+
+//go:embed abbreviations.json
+var defaultAbbreviationsJSON []byte
+
+//go:embed frequencies.json
+var defaultFrequenciesJSON []byte
+
+//go:embed routes.json
+var defaultRoutesJSON []byte
+
+//go:embed symptoms.json
+var defaultSymptomsJSON []byte
+
+//go:embed rad_keys.json
+var defaultRadKeysJSON []byte
+
+//go:embed durations.json
+var defaultDurationsJSON []byte
+
+//go:embed drugs.json
+var defaultDrugsJSON []byte
+
+type FrequencyConfig struct {
+	Aliases    map[string]string `json:"aliases"`
+	Expansions map[string]string `json:"expansions"`
+}
+
+type RouteConfig struct {
+	Aliases    map[string]string `json:"aliases"`
+	Expansions map[string]string `json:"expansions"`
+}
+
+type DurationUnit struct {
+	Aliases []string `json:"aliases"`
+	Word    string   `json:"word"`
+	Short   string   `json:"short"`
+}
+
+type ParserConfig struct {
+	Abbreviations map[string]string        `json:"abbreviations"`
+	Frequencies   FrequencyConfig          `json:"frequencies"`
+	Routes        RouteConfig              `json:"routes"`
+	Symptoms      map[string]string        `json:"symptoms"`
+	RadKeys       []string                 `json:"rad_keys"`
+	Durations     map[string]DurationUnit  `json:"durations"`
+	Drugs         []string                 `json:"drugs"`
+}
+
+var DefaultConfig ParserConfig
+
+func init() {
+	if err := json.Unmarshal(defaultAbbreviationsJSON, &DefaultConfig.Abbreviations); err != nil {
+		panic(err)
+	}
+	Abbreviations = DefaultConfig.Abbreviations
+	if err := json.Unmarshal(defaultFrequenciesJSON, &DefaultConfig.Frequencies); err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(defaultRoutesJSON, &DefaultConfig.Routes); err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(defaultSymptomsJSON, &DefaultConfig.Symptoms); err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(defaultRadKeysJSON, &DefaultConfig.RadKeys); err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(defaultDurationsJSON, &DefaultConfig.Durations); err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(defaultDrugsJSON, &DefaultConfig.Drugs); err != nil {
+		panic(err)
+	}
+}
 
 // Vitals holds structured vital signs.
 //
@@ -70,11 +146,14 @@ type ClinicalCase struct {
 	Labs          map[string]string            `json:"labs,omitempty"`           //Structured labs dictionary
 	Imaging       map[string]string            `json:"imaging,omitempty"`        //Structured radiology/imaging
 	Prescriptions []Prescription               `json:"prescriptions,omitempty"`  //Prescriptions
+	Images        []string                     `json:"images,omitempty"`         //Image attachment paths
 	Extra         map[string]map[string]string `json:"extra,omitempty"`          //Extra information
 	SpecialtyData any                          `json:"specialty_data,omitempty"` //Specialty data
 	RangeMarkers  []RangeMarker                `json:"range_markers,omitempty"`  //Out-of-range markers derived from user-configurable reference ranges (transcription aid, not clinical decision support)
 	ClinicalFlags ClinicalFlags                `json:"clinical_flags"`           //Clinical flags patient already have such as pregnancy, lactation, etc
 	Warnings      []string                     `json:"warnings,omitempty"`       //Warnings
+	Config        *ParserConfig                `json:"-"`                        // Configuration options
+	CustomRanges  ReferenceRanges              `json:"-"`                        // Custom reference ranges
 }
 
 // NewClinicalCase creates a properly initialized ClinicalCase.
@@ -85,8 +164,10 @@ func NewClinicalCase() ClinicalCase {
 		Imaging:       make(map[string]string),
 		Symptoms:      []Symptom{},
 		Prescriptions: []Prescription{},
+		Images:        []string{},
 		RangeMarkers:  []RangeMarker{},
 		Warnings:      []string{},
+		Config:        &DefaultConfig,
 	}
 }
 
@@ -132,4 +213,26 @@ func GenerateId() string {
 		now.Hour(), now.Minute(), now.Second(),
 		hex.EncodeToString(b[:]),
 	)
+}
+
+func DefaultConfigJSON(filename string) []byte {
+	switch filename {
+	case "abbreviations.json":
+		return defaultAbbreviationsJSON
+	case "frequencies.json":
+		return defaultFrequenciesJSON
+	case "routes.json":
+		return defaultRoutesJSON
+	case "symptoms.json":
+		return defaultSymptomsJSON
+	case "rad_keys.json":
+		return defaultRadKeysJSON
+	case "durations.json":
+		return defaultDurationsJSON
+	case "drugs.json":
+		return defaultDrugsJSON
+	case "reference_ranges.json":
+		return defaultRangesJSON
+	}
+	return nil
 }

@@ -1,0 +1,8 @@
+{
+  "+++": "very severe",
+  "++": "severe",
+  "+": "mild",
+  "---": "resolved",
+  "--": "resolving",
+  "-": "improving"
+}

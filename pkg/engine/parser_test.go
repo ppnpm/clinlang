@@ -501,3 +501,18 @@ func TestParseString_PluginCannotOverrideCoreCommand(t *testing.T) {
 		t.Fatalf("expected additive-only warning, got %v", result.Warnings)
 	}
 }
+
+func TestParseString_SpecialLabKeys(t *testing.T) {
+	input := "lab b12 hba1c pco2:45"
+	result := ParseString(input)
+
+	if result.Labs["b12"] != "true" {
+		t.Errorf("Expected b12 to be 'true', got %q", result.Labs["b12"])
+	}
+	if result.Labs["hba1c"] != "true" {
+		t.Errorf("Expected hba1c to be 'true', got %q", result.Labs["hba1c"])
+	}
+	if result.Labs["pco2"] != "45" {
+		t.Errorf("Expected pco2 to be '45', got %q", result.Labs["pco2"])
+	}
+}

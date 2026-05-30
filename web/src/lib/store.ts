@@ -33,6 +33,13 @@ interface AppState {
   welcomeOpen: boolean;
   conflict: ConflictInfo | null;
 
+  // Accessibility and Autosave settings
+  autosaveOn: boolean;
+  fontSize: 'sm' | 'md' | 'lg' | 'xl';
+  editorFont: 'mono' | 'atkinson' | 'dyslexic' | 'sans';
+  lineSpacing: 'normal' | 'relaxed' | 'double';
+  highContrastFocus: boolean;
+
   init: () => Promise<void>;
   refreshTree: () => Promise<void>;
   setWorkspace: (path: string) => Promise<void>;
@@ -52,6 +59,12 @@ interface AppState {
   setMarkers: (on: boolean) => void;
   closeWelcome: () => void;
   restoreSession: () => Promise<void>;
+
+  setAutosaveOn: (on: boolean) => void;
+  setFontSize: (size: 'sm' | 'md' | 'lg' | 'xl') => void;
+  setEditorFont: (font: 'mono' | 'atkinson' | 'dyslexic' | 'sans') => void;
+  setLineSpacing: (spacing: 'normal' | 'relaxed' | 'double') => void;
+  setHighContrastFocus: (on: boolean) => void;
 
   // Conflict resolution: force-save the active file ignoring the ETag,
   // OR reload the active file from disk discarding local edits.
@@ -85,6 +98,11 @@ function persist(s: {
   sidebarOpen: boolean;
   previewOpen: boolean;
   markersOn: boolean;
+  autosaveOn: boolean;
+  fontSize: 'sm' | 'md' | 'lg' | 'xl';
+  editorFont: 'mono' | 'atkinson' | 'dyslexic' | 'sans';
+  lineSpacing: 'normal' | 'relaxed' | 'double';
+  highContrastFocus: boolean;
 }): void {
   if (!s.workspace?.path) return;
   saveSession({
@@ -94,6 +112,11 @@ function persist(s: {
     sidebarOpen: s.sidebarOpen,
     previewOpen: s.previewOpen,
     markersOn: s.markersOn,
+    autosaveOn: s.autosaveOn,
+    fontSize: s.fontSize,
+    editorFont: s.editorFont,
+    lineSpacing: s.lineSpacing,
+    highContrastFocus: s.highContrastFocus,
   });
 }
 
@@ -108,6 +131,12 @@ export const useStore = create<AppState>((set, get) => ({
   markersOn: false,
   welcomeOpen: false,
   conflict: null,
+
+  autosaveOn: true,
+  fontSize: 'md',
+  editorFont: 'mono',
+  lineSpacing: 'normal',
+  highContrastFocus: false,
 
   init: async () => {
     try {
@@ -268,9 +297,24 @@ export const useStore = create<AppState>((set, get) => ({
       next[to] = { ...next[from], path: to };
       delete next[from];
     }
+    const fromPrefix = from + '/';
+    const toPrefix = to + '/';
+    Object.keys(next).forEach((path) => {
+      if (path.startsWith(fromPrefix)) {
+        const newPath = toPrefix + path.slice(fromPrefix.length);
+        next[newPath] = { ...next[path], path: newPath };
+        delete next[path];
+      }
+    });
+    let nextActivePath = activePath;
+    if (activePath === from) {
+      nextActivePath = to;
+    } else if (activePath && activePath.startsWith(fromPrefix)) {
+      nextActivePath = toPrefix + activePath.slice(fromPrefix.length);
+    }
     set({
       open: next,
-      activePath: activePath === from ? to : activePath,
+      activePath: nextActivePath,
     });
     await get().refreshTree();
     persist(get());
@@ -381,6 +425,11 @@ export const useStore = create<AppState>((set, get) => ({
       sidebarOpen: session.sidebarOpen,
       previewOpen: session.previewOpen,
       markersOn: session.markersOn,
+      autosaveOn: session.autosaveOn ?? true,
+      fontSize: session.fontSize ?? 'md',
+      editorFont: session.editorFont ?? 'mono',
+      lineSpacing: session.lineSpacing ?? 'normal',
+      highContrastFocus: session.highContrastFocus ?? false,
     });
 
     const opened: Record<string, OpenFile> = {};
@@ -404,5 +453,26 @@ export const useStore = create<AppState>((set, get) => ({
       : (Object.keys(opened)[0] ?? null);
 
     set({ open: opened, activePath });
+  },
+
+  setAutosaveOn: (on) => {
+    set({ autosaveOn: on });
+    persist(get());
+  },
+  setFontSize: (size) => {
+    set({ fontSize: size });
+    persist(get());
+  },
+  setEditorFont: (font) => {
+    set({ editorFont: font });
+    persist(get());
+  },
+  setLineSpacing: (spacing) => {
+    set({ lineSpacing: spacing });
+    persist(get());
+  },
+  setHighContrastFocus: (on) => {
+    set({ highContrastFocus: on });
+    persist(get());
   },
 }));

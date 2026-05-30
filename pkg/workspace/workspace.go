@@ -69,6 +69,25 @@ func (fs *LocalFileSystem) LoadFile(path string) (string, error) {
 	return string(data), nil
 }
 
+func (fs *LocalFileSystem) LoadBinaryFile(path string) ([]byte, error) {
+	full, err := fs.resolve(path)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(full)
+}
+
+func (fs *LocalFileSystem) SaveBinaryFile(path string, data []byte) error {
+	full, err := fs.resolve(path)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(full, data, 0644)
+}
+
 func (fs *LocalFileSystem) ListFiles(directory string) ([]FileEntry, error) {
 	full, err := fs.resolve(directory)
 	if err != nil {

@@ -367,7 +367,7 @@
   <a href="#what-it-looks-like" class="md-nav__link">
     <span class="md-ellipsis">
       
-        👁️ What it Looks Like
+        What it Looks Like
       
     </span>
   </a>
@@ -378,7 +378,7 @@
   <a href="#default-reference-ranges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📊 Default Reference Ranges
+        Default Reference Ranges
       
     </span>
   </a>
@@ -389,12 +389,12 @@
   <a href="#customizing-reference-ranges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ⚙️ Customizing Reference Ranges
+        Customizing Reference Ranges
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="⚙️ Customizing Reference Ranges">
+    <nav class="md-nav" aria-label="Customizing Reference Ranges">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -428,12 +428,12 @@
   <a href="#special-range-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ⚠️ Special Range Rules
+        Special Range Rules
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="⚠️ Special Range Rules">
+    <nav class="md-nav" aria-label="Special Range Rules">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -555,7 +555,7 @@
   <a href="#what-it-looks-like" class="md-nav__link">
     <span class="md-ellipsis">
       
-        👁️ What it Looks Like
+        What it Looks Like
       
     </span>
   </a>
@@ -566,7 +566,7 @@
   <a href="#default-reference-ranges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        📊 Default Reference Ranges
+        Default Reference Ranges
       
     </span>
   </a>
@@ -577,12 +577,12 @@
   <a href="#customizing-reference-ranges" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ⚙️ Customizing Reference Ranges
+        Customizing Reference Ranges
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="⚙️ Customizing Reference Ranges">
+    <nav class="md-nav" aria-label="Customizing Reference Ranges">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -616,12 +616,12 @@
   <a href="#special-range-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ⚠️ Special Range Rules
+        Special Range Rules
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="⚠️ Special Range Rules">
+    <nav class="md-nav" aria-label="Special Range Rules">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -676,7 +676,7 @@
 Out-of-range markers are designed strictly as a transcription aid to help clinicians double-check values. They are <strong>not</strong> clinical decision support, severity indicators, or recommendations. The clinician is always the final authority and must interpret all findings in context.</p>
 </blockquote>
 <hr />
-<h2 id="what-it-looks-like">👁️ What it Looks Like</h2>
+<h2 id="what-it-looks-like">What it Looks Like</h2>
 <p>When markers are enabled, the SOAP note will flag out-of-range values like this:</p>
 <pre><code class="language-text">Vitals: BP: 160/100 | HR: 105 bpm | SpO2: 94% | Temp: 98.6 | RR: 22 /min
         - HR 105 bpm (outside ref 60-100, AHA adult defaults)
@@ -684,7 +684,7 @@ Out-of-range markers are designed strictly as a transcription aid to help clinic
 </code></pre>
 <p>In the ClinLang web UI, these markers are highlighted on hover over the vitals or lab lines, and are displayed in the SOAP preview.</p>
 <hr />
-<h2 id="default-reference-ranges">📊 Default Reference Ranges</h2>
+<h2 id="default-reference-ranges">Default Reference Ranges</h2>
 <p>ClinLang comes with standard adult reference ranges built-in. Below is the list of values checked:</p>
 <table>
 <thead>
@@ -791,7 +791,7 @@ Out-of-range markers are designed strictly as a transcription aid to help clinic
 </tbody>
 </table>
 <hr />
-<h2 id="customizing-reference-ranges">⚙️ Customizing Reference Ranges</h2>
+<h2 id="customizing-reference-ranges">Customizing Reference Ranges</h2>
 <p>You can override any default range to match your local laboratory guidelines or hospital policy.</p>
 <h3 id="editing-in-the-web-ui-easiest">Editing in the Web UI (Easiest)</h3>
 <ol>
@@ -816,7 +816,7 @@ Out-of-range markers are designed strictly as a transcription aid to help clinic
 <li><strong><code>source</code></strong> (string, required): The citation source shown in the warning. Always name this so you (and other readers) can audit where the range came from (e.g. "Hospital X Lab Guideline 2026").</li>
 </ul>
 <hr />
-<h2 id="special-range-rules">⚠️ Special Range Rules</h2>
+<h2 id="special-range-rules">Special Range Rules</h2>
 <h3 id="1-haemoglobin-sex-specific">1. Haemoglobin (Sex-Specific)</h3>
 <p>Haemoglobin ranges are split into <code>labs.hb.M</code> and <code>labs.hb.F</code>. 
 *   If a patient is registered as male (<code>pt 58M</code>), the system uses <code>labs.hb.M</code>.

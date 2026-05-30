@@ -5,7 +5,7 @@ ClinLang is a lightweight, high-performance shorthand clinical documentation and
 By typing brief, zero-punctuation shorthand, ClinLang automatically translates your text, resolves abbreviations, checks reference ranges, and organizes findings into a clean, standardized **SOAP (Subjective, Objective, Assessment, Plan)** format.
 
 Documentation Website: Visit the clinician guide at [https://ppnpm.github.io/clinlang/](https://ppnpm.github.io/clinlang/)
-[![N|Solid](https://ibb.co/fdFXVjtd)]() 
+
 > [!IMPORTANT]
 > **Clinical Disclaimer**
 > ClinLang is a personal shorthand translation and note-taking utility. It is **not** a medical device. It does not provide clinical decision support, diagnostic assistance, dosing recommendations, or treatment guidelines. All clinical judgments, interpretations, and choices remain the sole responsibility of the clinician. See [DISCLAIMER.md](DISCLAIMER.md) at the repository root.

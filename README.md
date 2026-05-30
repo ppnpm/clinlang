@@ -6,6 +6,8 @@ By typing brief, zero-punctuation shorthand, ClinLang automatically translates y
 
 Documentation Website: Visit the clinician guide at [https://ppnpm.github.io/clinlang/](https://ppnpm.github.io/clinlang/)
 
+![ClinLang Web Interface](https://i.ibb.co/QvQJ7ynv/73999-A19-42-FE-489-F-86-A4-66944-F0-CD043.png)
+
 > [!IMPORTANT]
 > **Clinical Disclaimer**
 > ClinLang is a personal shorthand translation and note-taking utility. It is **not** a medical device. It does not provide clinical decision support, diagnostic assistance, dosing recommendations, or treatment guidelines. All clinical judgments, interpretations, and choices remain the sole responsibility of the clinician. See [DISCLAIMER.md](DISCLAIMER.md) at the repository root.
